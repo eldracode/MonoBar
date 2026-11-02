@@ -1,0 +1,25 @@
+[bar]
+monitor = "main"
+width = "100%"
+height = 36
+offset_x = 0
+offset_y = 0
+padding = 16
+module_margin = 12
+socket = "~/.config/polybar-mac/events.sock"
+
+[colors]
+background = "171A21E8"
+foreground = "E7EAF0"
+border = "343A46"
+accent = "8AB4F8"
+
+[fonts]
+primary = "SF Pro Text"
+fallback = "Apple Symbols"
+size = 13
+
+[layout]
+modules-left = ["workspaces", "title"]
+modules-center = ["music"]
+modules-right = ["cpu", "ram", "battery", "wifi", "clock"]

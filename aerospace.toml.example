@@ -1,0 +1,6 @@
+# Merge these top-level callbacks into ~/.config/aerospace/aerospace.toml.
+# AeroSpace runs them on workspace and window focus changes. `nc -U` sends a
+# short notification to the bar's Unix stream socket; set the same socket path
+# in ~/.config/polybar-mac/config.toml if you override the default.
+on-focused-workspace-changed = ['exec-and-forget /bin/sh -c "printf workspace | nc -U $HOME/.config/polybar-mac/events.sock"']
+on-focus-changed = ['exec-and-forget /bin/sh -c "printf focus | nc -U $HOME/.config/polybar-mac/events.sock"']
