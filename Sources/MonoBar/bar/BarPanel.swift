@@ -2,6 +2,7 @@ import AppKit
 
 final class BarPanel: NSPanel {
     let display: NSScreen
+    private var hiddenForFullscreen = false
 
     init(screen: NSScreen, config: BarConfig, model: BarModel) {
         self.display = screen
@@ -15,7 +16,8 @@ final class BarPanel: NSPanel {
         hasShadow = false
         level = .statusBar
         acceptsMouseMovedEvents = true
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        // Stay available across normal Spaces, but do not join fullscreen app Spaces.
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         hidesOnDeactivate = false
         isMovable = false
         contentView = BarView(frame: NSRect(origin: .zero, size: frame.size), config: config, model: model)
@@ -25,5 +27,16 @@ final class BarPanel: NSPanel {
     func setMenuBarRevealed(_ revealed: Bool) {
         let desiredLevel: NSWindow.Level = revealed ? .floating : .statusBar
         if level != desiredLevel { level = desiredLevel }
+    }
+
+    func setHiddenForFullscreen(_ hidden: Bool) {
+        guard hidden != hiddenForFullscreen else { return }
+        hiddenForFullscreen = hidden
+        if hidden {
+            level = .statusBar
+            orderOut(nil)
+        } else {
+            orderFrontRegardless()
+        }
     }
 }

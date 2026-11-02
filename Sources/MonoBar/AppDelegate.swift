@@ -10,6 +10,8 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
     private var eventSocket: EventSocket?
     private var localMouseMonitor: Any?
     private var globalMouseMonitor: Any?
+    private var fullscreenTimer: Timer?
+    private var spaceObserver: NSObjectProtocol?
     private weak var menuBarScreen: NSScreen?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -20,6 +22,17 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
         }
         model.start()
         panels = NSScreen.screens.map { BarPanel(screen: $0, config: config, model: model) }
+        spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.updateFullscreenVisibility() }
+        let fullscreenTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            self?.updateFullscreenVisibility()
+        }
+        RunLoop.main.add(fullscreenTimer, forMode: .common)
+        self.fullscreenTimer = fullscreenTimer
+        updateFullscreenVisibility()
         let socket = EventSocket(path: config.socketPath) { [weak model] in model?.aerospace.refresh() }
         socket.start(); eventSocket = socket
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
@@ -35,6 +48,48 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
     func applicationWillTerminate(_ notification: Notification) {
         if let localMouseMonitor { NSEvent.removeMonitor(localMouseMonitor) }
         if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
+        if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
+        fullscreenTimer?.invalidate()
+    }
+
+    private func updateFullscreenVisibility() {
+        let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+        let mainScreen = NSScreen.screens.first {
+            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == CGMainDisplayID()
+        } ?? NSScreen.main
+        let mainTop = mainScreen?.frame.maxY ?? NSScreen.screens.map(\.frame.maxY).max() ?? 0
+        var fullscreenScreens = Set<ObjectIdentifier>()
+
+        for window in windows {
+            let ownerPID = (window[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value
+            let ownerName = window[kCGWindowOwnerName as String] as? String ?? ""
+            let windowName = window[kCGWindowName as String] as? String ?? ""
+            guard let ownerPID, ownerPID > 0,
+                  ownerPID != ProcessInfo.processInfo.processIdentifier,
+                  ownerName != "Window Server", ownerName != "Dock", ownerName != "SystemUIServer",
+                  !(ownerName == "Finder" && windowName == "Desktop"),
+                  (window[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+                  let boundsDictionary = window[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: boundsDictionary as CFDictionary) else { continue }
+
+            let appKitBounds = CGRect(x: bounds.minX, y: mainTop - bounds.maxY, width: bounds.width, height: bounds.height)
+            for screen in NSScreen.screens {
+                let frame = screen.frame
+                guard frame.width > 0, frame.height > 0,
+                      abs(appKitBounds.width - frame.width) <= frame.width * 0.03,
+                      abs(appKitBounds.height - frame.height) <= frame.height * 0.03 else { continue }
+                let intersection = frame.intersection(appKitBounds)
+                let visibleFraction = intersection.width * intersection.height / (frame.width * frame.height)
+                if visibleFraction >= 0.97 { fullscreenScreens.insert(ObjectIdentifier(screen)) }
+            }
+        }
+
+        if let menuBarScreen, fullscreenScreens.contains(ObjectIdentifier(menuBarScreen)) { self.menuBarScreen = nil }
+        for panel in panels {
+            let isFullscreen = fullscreenScreens.contains(ObjectIdentifier(panel.display))
+            if isFullscreen { panel.setMenuBarRevealed(false) }
+            panel.setHiddenForFullscreen(isFullscreen)
+        }
     }
 
     private func updateMenuBarLevel(at point: NSPoint) {
