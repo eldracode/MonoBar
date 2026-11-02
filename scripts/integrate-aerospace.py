@@ -21,8 +21,8 @@ focus_command = (
 
 source = re.sub(r"^on-focused-workspace-changed = .*\n", "", source, flags=re.MULTILINE)
 
-startup = "after-startup-command = ['exec-and-forget /Users/ayush.k/.local/bin/polybar-mac']"
-source = re.sub(r"^after-startup-command = \[\]$", startup, source, count=1, flags=re.MULTILINE)
+startup = "after-startup-command = ['exec-and-forget open -a /Users/ayush.k/Applications/PolybarMac.app']"
+source = re.sub(r"^after-startup-command = .*$", startup, source, count=1, flags=re.MULTILINE)
 
 workspace_match = re.search(r"^exec-on-workspace-change = (.+)$", source, flags=re.MULTILINE)
 if not workspace_match:

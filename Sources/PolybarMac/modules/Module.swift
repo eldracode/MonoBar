@@ -4,6 +4,7 @@ struct ModuleValue {
     var text: String
     var action: String? = nil
     var accent = false
+    var muted = false
 }
 
 protocol Module {

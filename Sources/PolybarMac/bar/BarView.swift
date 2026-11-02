@@ -32,18 +32,23 @@ final class BarView: NSView {
         let font = NSFont(name: config.fontName, size: config.fontSize) ?? .systemFont(ofSize: config.fontSize, weight: .medium)
         let y = (bounds.height - font.ascender + font.descender) / 2
         let widths = items.map { item -> CGFloat in
-            let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: item.accent ? config.accent : config.foreground]
+            let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color(for: item)]
             return (item.text as NSString).size(withAttributes: attrs).width
         }
         let total = widths.reduce(0, +) + CGFloat(max(items.count - 1, 0)) * config.moduleMargin
         var cursor = align == .left ? x : (align == .right ? x - total : x - total / 2)
         for (index, item) in items.enumerated() {
             let rect = NSRect(x: cursor, y: y, width: widths[index], height: font.ascender - font.descender + font.leading)
-            (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: item.accent ? config.accent : config.foreground])
+            (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: color(for: item)])
             if let action = item.action { hitTargets.append((rect.insetBy(dx: -4, dy: -5), action)) }
             cursor += widths[index] + config.moduleMargin
         }
         return total
+    }
+
+    private func color(for item: ModuleValue) -> NSColor {
+        if item.accent { return config.accent }
+        return item.muted ? config.foreground.withAlphaComponent(0.5) : config.foreground
     }
 
     override func mouseDown(with event: NSEvent) {

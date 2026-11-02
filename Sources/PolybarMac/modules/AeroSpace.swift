@@ -14,7 +14,7 @@ final class AeroSpace {
     private let executable = "/opt/homebrew/bin/aerospace"
 
     func refresh() {
-        let emptyOutput = Self.run(executable, ["list-workspaces", "--all", "--empty", "--format", "%{workspace}"])
+        let emptyOutput = Self.run(executable, ["list-workspaces", "--monitor", "all", "--empty", "--format", "%{workspace}"])
         let emptyNames = Set(emptyOutput.split(whereSeparator: \.isNewline).map(String.init))
         let workspaceOutput = Self.run(executable, ["list-workspaces", "--all", "--format", "%{workspace}|%{workspace-is-focused}|%{workspace-is-visible}"])
         let parsed = workspaceOutput.split(whereSeparator: \.isNewline).compactMap { line -> Workspace? in
@@ -22,8 +22,8 @@ final class AeroSpace {
             guard fields.count >= 3 else { return nil }
             return Workspace(id: fields[0], focused: fields[1] == "true", visible: fields[2] == "true", occupied: !emptyNames.contains(fields[0]))
         }
-        workspaces = parsed
-        title = Self.run(executable, ["list-windows", "--focused", "--format", "%{app-name} — %{window-title}"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        workspaces = parsed.filter { $0.occupied || $0.focused || $0.visible }
+        title = Self.run(executable, ["list-windows", "--focused", "--format", "%{app-name}"]).trimmingCharacters(in: .whitespacesAndNewlines)
         onChange?()
     }
 

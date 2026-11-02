@@ -1,20 +1,29 @@
 import AppKit
 
 final class BarPanel: NSPanel {
+    let display: NSScreen
+
     init(screen: NSScreen, config: BarConfig, model: BarModel) {
-        // Use the usable screen area so the top edge clears the menu bar and notch.
-        let visible = screen.visibleFrame
-        let width: CGFloat = config.width.hasSuffix("%") ? visible.width * (CGFloat(Double(config.width.dropLast()) ?? 100) / 100) : (CGFloat(Double(config.width) ?? Double(visible.width)))
-        let frame = NSRect(x: visible.minX + config.offsetX, y: visible.maxY - config.height - config.offsetY, width: min(width, visible.width), height: config.height)
+        self.display = screen
+        // Anchor to the physical top edge; visibleFrame begins below the menu bar/notch.
+        let screenFrame = screen.frame
+        let width: CGFloat = config.width.hasSuffix("%") ? screenFrame.width * (CGFloat(Double(config.width.dropLast()) ?? 100) / 100) : (CGFloat(Double(config.width) ?? Double(screenFrame.width)))
+        let frame = NSRect(x: screenFrame.minX + config.offsetX, y: screenFrame.maxY - config.height - config.offsetY, width: min(width, screenFrame.width), height: config.height)
         super.init(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        level = .floating
+        level = .statusBar
+        acceptsMouseMovedEvents = true
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         hidesOnDeactivate = false
         isMovable = false
         contentView = BarView(frame: NSRect(origin: .zero, size: frame.size), config: config, model: model)
         orderFrontRegardless()
+    }
+
+    func setMenuBarRevealed(_ revealed: Bool) {
+        let desiredLevel: NSWindow.Level = revealed ? .floating : .statusBar
+        if level != desiredLevel { level = desiredLevel }
     }
 }

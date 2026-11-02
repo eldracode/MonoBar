@@ -1,9 +1,13 @@
 import AppKit
+import CoreWLAN
 import Foundation
 import IOKit.ps
+import SystemConfiguration
 
 final class BarModel {
     let aerospace = AeroSpace()
+    private let wifiClient = CWWiFiClient.shared()
+    private let systemConfigStore = SCDynamicStoreCreate(nil, "PolybarMac" as CFString, nil, nil)
     private var observers: [() -> Void] = []
     private var timer: Timer?
     private var lastCPU: Double = 0
@@ -26,12 +30,19 @@ final class BarModel {
                 let state = ws.focused ? "●" : (ws.visible ? "◉" : (ws.occupied ? "•" : "○"))
                 return ModuleValue(text: "\(state) \(ws.id)", action: "workspace:\(ws.id)", accent: ws.focused || ws.visible)
             }
-            case "title": return aerospace.title.isEmpty ? [] : [ModuleValue(text: aerospace.title)]
-            case "clock": return [ModuleValue(text: DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short))]
+            case "title":
+                guard !aerospace.title.isEmpty else { return [] }
+                let divider = aerospace.workspaces.isEmpty ? [] : [ModuleValue(text: "│", muted: true)]
+                return divider + [ModuleValue(text: aerospace.title)]
+            case "clock":
+                let now = Date()
+                let time = DateFormatter.localizedString(from: now, dateStyle: .none, timeStyle: .short)
+                let date = DateFormatter.localizedString(from: now, dateStyle: .medium, timeStyle: .none)
+                return [ModuleValue(text: "🕒 \(time)  📅 \(date)")]
             case "battery": return [ModuleValue(text: batteryText())]
-            case "cpu": return [ModuleValue(text: String(format: "CPU %.0f%%", lastCPU))]
+            case "cpu": return [ModuleValue(text: String(format: "⚙️ %.0f%%", lastCPU))]
             case "ram": return [ModuleValue(text: memoryText())]
-            case "wifi": return [ModuleValue(text: "Wi-Fi")]
+            case "wifi": return [ModuleValue(text: wifiText())]
             case "music": return []
             default: return []
             }
@@ -45,19 +56,35 @@ final class BarModel {
     private func tick() { lastCPU = cpuUsage(); notifyChange() }
     private func notifyChange() { observers.forEach { $0() } }
     private func batteryText() -> String {
-        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else { return "Battery —" }
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else { return "🔋 —" }
         let current = description[kIOPSCurrentCapacityKey] as? Int ?? 0
         let charging = description[kIOPSIsChargingKey] as? Bool ?? false
-        return "Battery \(current)%\(charging ? " +" : "")"
+        return "🔋 \(current)%\(charging ? " +" : "")"
+    }
+    private func wifiText() -> String {
+        if let ssid = wifiClient.interface()?.ssid(), !ssid.isEmpty { return "🛜 \(ssid)" }
+        guard let store = systemConfigStore else { return "🛜 —" }
+        var interfaces = wifiClient.interfaceNames() ?? []
+        if let defaultInterface = wifiClient.interface()?.interfaceName, !interfaces.contains(defaultInterface) {
+            interfaces.insert(defaultInterface, at: 0)
+        }
+        for name in interfaces {
+            let key = "State:/Network/Interface/\(name)/AirPort" as CFString
+            guard let state = SCDynamicStoreCopyValue(store, key) as? [String: Any],
+                  let ssid = (state["SSID_STR"] as? String) ?? (state["SSID"] as? String),
+                  !ssid.isEmpty else { continue }
+            return "🛜 \(ssid)"
+        }
+        return "🛜 —"
     }
     private func memoryText() -> String {
         var stats = vm_statistics64(); var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &stats) { p in p.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count) } }
-        guard result == KERN_SUCCESS else { return "RAM —" }
+        guard result == KERN_SUCCESS else { return "▤ —" }
         var pageSize: vm_size_t = 0
-        guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS else { return "RAM —" }
+        guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS else { return "▤ —" }
         let used = UInt64(stats.active_count + stats.wire_count + stats.compressor_page_count) * UInt64(pageSize)
-        return String(format: "RAM %.1fG", Double(used) / 1_073_741_824)
+        return String(format: "▤ %.1fG", Double(used) / 1_073_741_824)
     }
     private func cpuUsage() -> Double {
         var info = host_cpu_load_info(); var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
