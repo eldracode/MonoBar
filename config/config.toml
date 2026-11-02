@@ -6,7 +6,7 @@ offset_x = 0
 offset_y = 0
 padding = 16
 module_margin = 12
-socket = "~/.config/polybar-mac/events.sock"
+socket = "~/.config/monobar/events.sock"
 
 [colors]
 background = "171A21E8"

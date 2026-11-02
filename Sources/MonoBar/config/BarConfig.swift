@@ -19,13 +19,16 @@ struct BarConfig {
     var left = ["workspaces", "title"]
     var center = ["music"]
     var right = ["cpu", "ram", "battery", "wifi", "bluetooth", "clock"]
-    var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/polybar-mac/events.sock")
+    var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/events.sock")
 
     static func load() -> BarConfig {
-        let home = (NSHomeDirectory() as NSString).appendingPathComponent(".config/polybar-mac/config.toml")
+        let home = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/config.toml")
+        let legacyHome = (NSHomeDirectory() as NSString).appendingPathComponent(".config/polybar-mac/config.toml")
         let xdg = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"]
-        let path = xdg.map { ($0 as NSString).appendingPathComponent("polybar-mac/config.toml") } ?? home
-        guard let source = try? String(contentsOfFile: path, encoding: .utf8) else { return BarConfig() }
+        let path = xdg.map { ($0 as NSString).appendingPathComponent("monobar/config.toml") } ?? home
+        let legacyPath = xdg.map { ($0 as NSString).appendingPathComponent("polybar-mac/config.toml") } ?? legacyHome
+        let configPath = FileManager.default.fileExists(atPath: path) ? path : legacyPath
+        guard let source = try? String(contentsOfFile: configPath, encoding: .utf8) else { return BarConfig() }
         var result = BarConfig()
         var section = ""
         for raw in source.components(separatedBy: .newlines) {

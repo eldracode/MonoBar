@@ -1,4 +1,4 @@
-# MISSION & SPECIFICATION: Native, Ultra-Lightweight "Polybar" for macOS & AeroSpace
+# MISSION & SPECIFICATION: Native, Ultra-Lightweight MonoBar for macOS & AeroSpace
 
 You are an expert macOS systems and graphics engineer specializing in Rust, Swift/Cocoa, CoreGraphics, and tiling window managers. 
 
@@ -31,8 +31,8 @@ Build a standalone, minimal, ultra-performant, and battery-friendly desktop stat
 
 ---
 
-### 3. Polybar-Style Configuration (TOML or INI)
-The application must parse a configuration file located at `~/.config/polybar-mac/config.toml` (or standard XDG paths).
+### 3. MonoBar Configuration (TOML or INI)
+The application must parse a configuration file located at `~/.config/monobar/config.toml` (or standard XDG paths).
 - **Bar Settings:**
   - `monitor`, `width`, `height`, `offset_x`, `offset_y`, `padding`, `module_margin`
   - Colors: HEX/RGBA format for `background`, `foreground`, `border`, `accent`
@@ -45,7 +45,7 @@ The application must parse a configuration file located at `~/.config/polybar-ma
 ---
 
 ### 4. Built-In Core Modules (Event-Driven & Polling)
-Implement standard polybar modules with minimal syscall overhead:
+Implement standard status bar modules with minimal syscall overhead:
 1. **Workspaces (AeroSpace):** Live workspace buttons with click handlers.
 2. **Window Title:** Active window/app name.
 3. **Battery:** Native reading via `IOPSCopyPowerSourcesInfo` / `IOPSGetPowerSourceDescription` (register for I/O Kit sleep/wake/power state notifications instead of polling).

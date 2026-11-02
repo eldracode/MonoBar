@@ -1,4 +1,4 @@
-# Polybar Mac
+# MonoBar
 
 A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderless non-activating `NSPanel`, CoreGraphics text drawing, a small TOML configuration reader, and a Unix datagram socket for AeroSpace event callbacks.
 
@@ -10,7 +10,7 @@ Requires macOS 13+ and Swift 6.
 make build
 ```
 
-The executable is `.build/debug/polybar-mac`. Copy `config/config.toml` to `~/.config/polybar-mac/config.toml`, replace the example socket path with your home path, then run the executable. `XDG_CONFIG_HOME` is also supported.
+The executable is `.build/debug/monobar`. Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the example socket path with your home path, then run the executable. `XDG_CONFIG_HOME` is also supported. Existing `polybar-mac` configuration files are still read as a fallback.
 
 ## AeroSpace events
 

@@ -8,7 +8,7 @@ import SystemConfiguration
 final class BarModel {
     let aerospace = AeroSpace()
     private let wifiClient = CWWiFiClient.shared()
-    private let systemConfigStore = SCDynamicStoreCreate(nil, "PolybarMac" as CFString, nil, nil)
+    private let systemConfigStore = SCDynamicStoreCreate(nil, "MonoBar" as CFString, nil, nil)
     private var observers: [() -> Void] = []
     private var timer: Timer?
     private var lastCPU: Double = 0
