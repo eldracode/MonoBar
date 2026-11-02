@@ -31,9 +31,19 @@ final class BarModel {
                 return ModuleValue(text: "\(state) \(ws.id)", action: "workspace:\(ws.id)", accent: ws.focused || ws.visible)
             }
             case "title":
-                guard !aerospace.title.isEmpty else { return [] }
-                let divider = aerospace.workspaces.isEmpty ? [] : [ModuleValue(text: "│", muted: true)]
-                return divider + [ModuleValue(text: aerospace.title)]
+                guard !aerospace.windows.isEmpty else { return [] }
+                var occurrences: [String: Int] = [:]
+                let totals = Dictionary(grouping: aerospace.windows, by: \.appName).mapValues(\.count)
+                var values = [ModuleValue(text: "│", muted: true)]
+                for window in aerospace.windows {
+                    if values.count > 1 { values.append(ModuleValue(text: "•", muted: true)) }
+                    occurrences[window.appName, default: 0] += 1
+                    let label = (totals[window.appName] ?? 0) > 1
+                        ? "\(window.appName) \(occurrences[window.appName]!)"
+                        : window.appName
+                    values.append(ModuleValue(text: label, action: "window:\(window.id)", accent: window.focused))
+                }
+                return values
             case "clock":
                 let now = Date()
                 let time = DateFormatter.localizedString(from: now, dateStyle: .none, timeStyle: .short)
@@ -51,6 +61,7 @@ final class BarModel {
 
     func perform(_ action: String) {
         if action.hasPrefix("workspace:") { aerospace.focus(String(action.dropFirst("workspace:".count))); aerospace.refresh() }
+        else if action.hasPrefix("window:") { aerospace.focusWindow(String(action.dropFirst("window:".count))); aerospace.refresh() }
     }
 
     private func tick() { lastCPU = cpuUsage(); notifyChange() }

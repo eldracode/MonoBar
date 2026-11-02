@@ -7,9 +7,15 @@ struct Workspace: Identifiable {
     let occupied: Bool
 }
 
+struct WindowItem: Identifiable {
+    let id: String
+    let appName: String
+    let focused: Bool
+}
+
 final class AeroSpace {
     private(set) var workspaces: [Workspace] = []
-    private(set) var title = ""
+    private(set) var windows: [WindowItem] = []
     var onChange: (() -> Void)?
     private let executable = "/opt/homebrew/bin/aerospace"
 
@@ -23,11 +29,18 @@ final class AeroSpace {
             return Workspace(id: fields[0], focused: fields[1] == "true", visible: fields[2] == "true", occupied: !emptyNames.contains(fields[0]))
         }
         workspaces = parsed.filter { $0.occupied || $0.focused || $0.visible }
-        title = Self.run(executable, ["list-windows", "--focused", "--format", "%{app-name}"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let focusedID = Self.run(executable, ["list-windows", "--focused", "--format", "%{window-id}"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let windowOutput = Self.run(executable, ["list-windows", "--workspace", "focused", "--format", "%{window-id}|%{app-name}"])
+        windows = windowOutput.split(whereSeparator: \.isNewline).compactMap { line in
+            let fields = line.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+            guard fields.count == 2 else { return nil }
+            return WindowItem(id: fields[0], appName: fields[1], focused: fields[0] == focusedID)
+        }
         onChange?()
     }
 
     func focus(_ workspace: String) { _ = Self.run(executable, ["workspace", workspace]) }
+    func focusWindow(_ windowID: String) { _ = Self.run(executable, ["focus", "--window-id", windowID]) }
 
     private static func run(_ path: String, _ arguments: [String]) -> String {
         let p = Process(); p.executableURL = URL(fileURLWithPath: path); p.arguments = arguments
