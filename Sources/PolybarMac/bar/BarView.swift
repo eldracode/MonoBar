@@ -1,6 +1,12 @@
 import AppKit
+import CoreText
 
 final class BarView: NSView {
+    private static let fontAwesomeRegistered: Bool = {
+        guard let url = Bundle.module.url(forResource: "fa-brands-400", withExtension: "ttf", subdirectory: "Resources") else { return false }
+        return CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+    }()
+
     private let config: BarConfig
     private let model: BarModel
     private var hitTargets: [(NSRect, String)] = []
@@ -32,16 +38,35 @@ final class BarView: NSView {
         let font = NSFont(name: config.fontName, size: config.fontSize) ?? .systemFont(ofSize: config.fontSize, weight: .medium)
         let y = (bounds.height - font.ascender + font.descender) / 2
         let widths = items.map { item -> CGFloat in
+            if item.symbolName == "fontawesome-bluetooth", Self.fontAwesomeRegistered,
+               let iconFont = NSFont(name: "Font Awesome 6 Brands", size: config.fontSize) {
+                return ("\u{f293}" as NSString).size(withAttributes: [.font: iconFont]).width
+            }
+            if item.symbolName != nil { return config.fontSize }
             let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color(for: item)]
             return (item.text as NSString).size(withAttributes: attrs).width
         }
-        let total = widths.reduce(0, +) + CGFloat(max(items.count - 1, 0)) * config.moduleMargin
+        let spacing = items.dropLast().reduce(CGFloat.zero) { total, item in
+            total + (item.spacingAfter ?? config.moduleMargin)
+        }
+        let total = widths.reduce(0, +) + spacing
         var cursor = align == .left ? x : (align == .right ? x - total : x - total / 2)
         for (index, item) in items.enumerated() {
             let rect = NSRect(x: cursor, y: y, width: widths[index], height: font.ascender - font.descender + font.leading)
-            (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: color(for: item)])
+            if item.symbolName == "fontawesome-bluetooth", Self.fontAwesomeRegistered,
+               let iconFont = NSFont(name: "Font Awesome 6 Brands", size: config.fontSize) {
+                ("\u{f293}" as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: iconFont, .foregroundColor: config.accent])
+            } else if let symbolName = item.symbolName,
+               let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?.withSymbolConfiguration(
+                   NSImage.SymbolConfiguration(pointSize: config.fontSize, weight: .regular)
+                       .applying(NSImage.SymbolConfiguration(paletteColors: [config.accent]))
+               ) {
+                symbol.draw(in: NSRect(x: cursor, y: (bounds.height - config.fontSize) / 2, width: config.fontSize, height: config.fontSize))
+            } else {
+                (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: color(for: item)])
+            }
             if let action = item.action { hitTargets.append((rect.insetBy(dx: -4, dy: -5), action)) }
-            cursor += widths[index] + config.moduleMargin
+            cursor += widths[index] + (item.spacingAfter ?? config.moduleMargin)
         }
         return total
     }

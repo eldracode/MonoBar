@@ -18,7 +18,7 @@ struct BarConfig {
     var fontSize: CGFloat = 13
     var left = ["workspaces", "title"]
     var center = ["music"]
-    var right = ["cpu", "ram", "battery", "wifi", "clock"]
+    var right = ["cpu", "ram", "battery", "wifi", "bluetooth", "clock"]
     var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/polybar-mac/events.sock")
 
     static func load() -> BarConfig {

@@ -1,6 +1,7 @@
 import AppKit
 import CoreWLAN
 import Foundation
+import IOBluetooth
 import IOKit.ps
 import SystemConfiguration
 
@@ -53,6 +54,7 @@ final class BarModel {
             case "cpu": return [ModuleValue(text: String(format: "⚙️ %.0f%%", lastCPU))]
             case "ram": return [ModuleValue(text: memoryText())]
             case "wifi": return [ModuleValue(text: wifiText())]
+            case "bluetooth": return bluetoothValues()
             case "music": return []
             default: return []
             }
@@ -87,6 +89,15 @@ final class BarModel {
             return "🛜 \(ssid)"
         }
         return "🛜 —"
+    }
+    private func bluetoothValues() -> [ModuleValue] {
+        guard IOBluetoothHostController.default()?.powerState == kBluetoothHCIPowerStateON else {
+            return [ModuleValue(text: "", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: "Off")]
+        }
+        let connected = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? [])
+            .first(where: { $0.isConnected() })
+        let state = connected?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "On"
+        return [ModuleValue(text: "", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: state)]
     }
     private func memoryText() -> String {
         var stats = vm_statistics64(); var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)

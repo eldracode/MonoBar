@@ -5,6 +5,8 @@ struct ModuleValue {
     var action: String? = nil
     var accent = false
     var muted = false
+    var spacingAfter: CGFloat? = nil
+    var symbolName: String? = nil
 }
 
 protocol Module {
