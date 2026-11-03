@@ -10,6 +10,8 @@ Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install i
 
 Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
 
+The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
+
 ```sh
 make build
 ```
@@ -20,4 +22,4 @@ The executable is `.build/debug/monobar`. Copy `config/config.toml` to `~/.confi
 
 See `aerospace.toml.example`; merge the hook into your AeroSpace config and reload AeroSpace. Workspace pills invoke `aerospace workspace <name>`. The bar refreshes workspaces on hook events and reads the focused window title during refresh.
 
-The implementation is intentionally compact. `music` remains an extension point. Wi-Fi, Bluetooth, and weather use native system APIs or the configured OpenWeather provider; CPU/RAM and battery use native system APIs.
+The implementation is intentionally compact. `music` remains an extension point. Wi-Fi, Bluetooth, audio volume, and weather use native system APIs or the configured OpenWeather provider; CPU/RAM and battery use native system APIs.

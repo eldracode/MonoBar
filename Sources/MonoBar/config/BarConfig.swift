@@ -18,7 +18,7 @@ struct BarConfig {
     var fontSize: CGFloat = 13
     var left = ["workspaces", "title"]
     var center = ["music"]
-    var right = ["cpu", "ram", "battery", "wifi", "bluetooth", "weather", "clock"]
+    var right = ["cpu", "ram", "battery", "volume", "mic", "wifi", "bluetooth", "weather", "clock"]
     var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/events.sock")
     var weatherProvider = "openweather"
     var weatherAPIKey = ""

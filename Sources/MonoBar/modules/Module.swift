@@ -7,6 +7,7 @@ struct ModuleValue {
     var muted = false
     var spacingAfter: CGFloat? = nil
     var symbolName: String? = nil
+    var scrollAction: String? = nil
 }
 
 protocol Module {

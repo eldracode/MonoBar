@@ -10,6 +10,7 @@ final class BarView: NSView {
     private let config: BarConfig
     private let model: BarModel
     private var hitTargets: [(NSRect, String)] = []
+    private var scrollTargets: [(NSRect, String)] = []
 
     init(frame: NSRect, config: BarConfig, model: BarModel) {
         self.config = config; self.model = model
@@ -25,6 +26,7 @@ final class BarView: NSView {
         config.border.withAlphaComponent(0.65).setStroke()
         let edge = NSBezierPath(); edge.move(to: NSPoint(x: 0, y: 0.5)); edge.line(to: NSPoint(x: bounds.width, y: 0.5)); edge.lineWidth = 1; edge.stroke()
         hitTargets.removeAll(keepingCapacity: true)
+        scrollTargets.removeAll(keepingCapacity: true)
         let left = model.values(for: config.left)
         let center = model.values(for: config.center)
         let right = model.values(for: config.right)
@@ -66,6 +68,7 @@ final class BarView: NSView {
                 (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: color(for: item)])
             }
             if let action = item.action { hitTargets.append((rect.insetBy(dx: -4, dy: -5), action)) }
+            if let action = item.scrollAction { scrollTargets.append((rect.insetBy(dx: -4, dy: -5), action)) }
             cursor += widths[index] + (item.spacingAfter ?? config.moduleMargin)
         }
         return total
@@ -80,5 +83,17 @@ final class BarView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         guard let (_, action) = hitTargets.first(where: { $0.0.contains(point) }) else { return }
         model.perform(action)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let (_, action) = scrollTargets.first(where: { $0.0.contains(point) }) else {
+            super.scrollWheel(with: event)
+            return
+        }
+        let delta = event.scrollingDeltaY
+        guard delta != 0 else { return }
+        let magnitude = min(10, max(1, Int((abs(delta) * 2).rounded())))
+        model.adjustVolume(action == "volume:input" ? "input" : "output", by: delta > 0 ? magnitude : -magnitude)
     }
 }

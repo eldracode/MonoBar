@@ -1,4 +1,5 @@
 import AppKit
+import CoreAudio
 import CoreLocation
 import CoreWLAN
 import Foundation
@@ -16,6 +17,10 @@ final class BarModel {
     private var timer: Timer?
     private var lastCPU: Double = 0
     private var previousTicks: (UInt32, UInt32, UInt32, UInt32)?
+    private var outputVolume: Int?
+    private var inputVolume: Int?
+    private var outputMuted: Bool?
+    private var inputMuted: Bool?
     private var weatherLocation: CLLocationCoordinate2D?
     private var weatherText = "🌡️ —"
     private var lastWeatherAttempt = Date.distantPast
@@ -34,6 +39,10 @@ final class BarModel {
 
     func start() {
         aerospace.refresh()
+        outputVolume = readVolume(isInput: false)
+        inputVolume = readVolume(isInput: true)
+        outputMuted = readMute(isInput: false)
+        inputMuted = readMute(isInput: true)
         let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
     }
@@ -67,6 +76,8 @@ final class BarModel {
             case "battery": return [ModuleValue(text: batteryText())]
             case "cpu": return [ModuleValue(text: String(format: "⚙️ %.0f%%", lastCPU))]
             case "ram": return [ModuleValue(text: memoryText())]
+            case "volume": return [ModuleValue(text: outputVolumeText(), action: "toggle:mute-output", scrollAction: "volume:output")]
+            case "mic": return [ModuleValue(text: inputVolumeText(), action: "toggle:mute-input", scrollAction: "volume:input")]
             case "wifi": return [ModuleValue(text: wifiText(), action: "toggle:wifi")]
             case "bluetooth": return bluetoothValues()
             case "weather": return [ModuleValue(text: weatherText)]
@@ -81,6 +92,29 @@ final class BarModel {
         else if action.hasPrefix("window:") { aerospace.focusWindow(String(action.dropFirst("window:".count))); aerospace.refresh() }
         else if action == "toggle:wifi" { toggleWiFi() }
         else if action == "toggle:bluetooth" { toggleBluetooth() }
+        else if action == "toggle:mute-output" { toggleMute(isInput: false) }
+        else if action == "toggle:mute-input" { toggleMute(isInput: true) }
+    }
+
+    func adjustVolume(_ target: String, by delta: Int) {
+        let isInput = target == "input"
+        guard isInput || target == "output", delta != 0,
+              let current = readVolume(isInput: isInput),
+              let device = defaultAudioDevice(isInput: isInput) else { return }
+        let next = min(100, max(0, current + delta))
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var scalar = Float32(next) / 100
+        let status = AudioObjectSetPropertyData(
+            device, &address, 0, nil,
+            UInt32(MemoryLayout<Float32>.size), &scalar
+        )
+        guard status == noErr else { return }
+        if isInput { inputVolume = next } else { outputVolume = next }
+        notifyChange()
     }
 
     func updateWeatherLocation(_ location: CLLocationCoordinate2D) {
@@ -95,10 +129,80 @@ final class BarModel {
 
     private func tick() {
         lastCPU = cpuUsage()
+        outputVolume = readVolume(isInput: false)
+        inputVolume = readVolume(isInput: true)
+        outputMuted = readMute(isInput: false)
+        inputMuted = readMute(isInput: true)
         refreshWeather()
         notifyChange()
     }
     private func notifyChange() { observers.forEach { $0() } }
+    private func volumeText(_ level: Int?, icon: String) -> String {
+        guard let level else { return "\(icon) —" }
+        return "\(icon) \(level)%"
+    }
+    private func outputVolumeText() -> String {
+        volumeText(outputVolume, icon: outputMuted == true ? "🔇" : "🔊")
+    }
+    private func inputVolumeText() -> String {
+        let level = inputVolume.map { "\($0)%" } ?? "—"
+        return "🎙️\(inputMuted == true ? " Muted" : "") \(level)"
+    }
+    private func defaultAudioDevice(isInput: Bool) -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: isInput ? kAudioHardwarePropertyDefaultInputDevice : kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device
+        )
+        return status == noErr && device != kAudioObjectUnknown ? device : nil
+    }
+    private func readVolume(isInput: Bool) -> Int? {
+        guard let device = defaultAudioDevice(isInput: isInput) else { return nil }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var scalar: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        let status = AudioObjectGetPropertyData(device, &address, 0, nil, &size, &scalar)
+        guard status == noErr else { return nil }
+        return Int((min(1, max(0, scalar)) * 100).rounded())
+    }
+    private func readMute(isInput: Bool) -> Bool? {
+        guard let device = defaultAudioDevice(isInput: isInput) else { return nil }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var muted: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectGetPropertyData(device, &address, 0, nil, &size, &muted)
+        return status == noErr ? muted != 0 : nil
+    }
+    private func toggleMute(isInput: Bool) {
+        guard let device = defaultAudioDevice(isInput: isInput),
+              let current = readMute(isInput: isInput) else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var muted: UInt32 = current ? 0 : 1
+        let status = AudioObjectSetPropertyData(
+            device, &address, 0, nil,
+            UInt32(MemoryLayout<UInt32>.size), &muted
+        )
+        guard status == noErr else { return }
+        if isInput { inputMuted = muted != 0 } else { outputMuted = muted != 0 }
+        notifyChange()
+    }
     private func batteryText() -> String {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else { return "🔋 —" }
         let current = description[kIOPSCurrentCapacityKey] as? Int ?? 0
