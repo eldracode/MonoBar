@@ -18,11 +18,22 @@ Set `float = true` to keep the bar above normal app windows, or `false` to let w
 
 `offset_side` sets an equal inset from the left and right edges in points. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
 
+### For debug builds
 ```sh
 make build
 ```
+The executable is present at `.build/debug/monobar`. 
 
-The executable is `.build/debug/monobar`. Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the example socket path with your home path, then run the executable. `XDG_CONFIG_HOME` is also supported. Existing `polybar-mac` configuration files are still read as a fallback.
+### For release builds
+```sh
+make install
+```
+The executable is present at  `"$HOME/Applications/MonoBar.app"` and can be launched by 
+
+```sh
+open -a "$HOME/Applications/MonoBar.app"
+```
+Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the example socket path with your home path, then run the executable. `XDG_CONFIG_HOME` is also supported. Existing `MonoBar` configuration files are still read as a fallback.
 
 ## AeroSpace events
 
