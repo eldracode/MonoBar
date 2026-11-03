@@ -12,6 +12,12 @@ Weather uses the OpenWeather current weather API. Add your API key under `[weath
 
 The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
 
+Set `radius_top_left`, `radius_top_right`, `radius_bottom_right`, and `radius_bottom_left` in `[bar]` to configure each corner independently. Values are point radii and are clamped to half the bar's height or width.
+
+Set `float = true` to keep the bar above normal app windows, or `false` to let windows cover it. `offset_top` moves the bar down from the top edge in points; the existing `offset_y` setting remains supported, and `offset_top` takes precedence when both are set.
+
+`offset_side` sets an equal inset from the left and right edges in points. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
+
 ```sh
 make build
 ```

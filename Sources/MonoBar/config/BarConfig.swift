@@ -7,6 +7,13 @@ struct BarConfig {
     var height: CGFloat = 34
     var offsetX: CGFloat = 0
     var offsetY: CGFloat = 0
+    var offsetTop: CGFloat?
+    var offsetSide: CGFloat = 0
+    var floating = true
+    var radiusTopLeft: CGFloat = 0
+    var radiusTopRight: CGFloat = 0
+    var radiusBottomRight: CGFloat = 0
+    var radiusBottomLeft: CGFloat = 0
     var padding: CGFloat = 14
     var moduleMargin: CGFloat = 10
     var background = NSColor(hex: "171A21E8")
@@ -68,6 +75,13 @@ struct BarConfig {
             case "bar.height": result.height = number(result.height)
             case "bar.offset_x": result.offsetX = number(result.offsetX)
             case "bar.offset_y": result.offsetY = number(result.offsetY)
+            case "bar.offset_top": result.offsetTop = number(0)
+            case "bar.offset_side": result.offsetSide = max(0, number(0))
+            case "bar.float": result.floating = value.lowercased() == "true"
+            case "bar.radius_top_left": result.radiusTopLeft = max(0, number(result.radiusTopLeft))
+            case "bar.radius_top_right": result.radiusTopRight = max(0, number(result.radiusTopRight))
+            case "bar.radius_bottom_right": result.radiusBottomRight = max(0, number(result.radiusBottomRight))
+            case "bar.radius_bottom_left": result.radiusBottomLeft = max(0, number(result.radiusBottomLeft))
             case "bar.padding": result.padding = number(result.padding)
             case "bar.module_margin": result.moduleMargin = number(result.moduleMargin)
             case "bar.socket":

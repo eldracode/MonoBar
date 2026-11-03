@@ -34,7 +34,7 @@ Build a standalone, minimal, ultra-performant, and battery-friendly desktop stat
 ### 3. MonoBar Configuration (TOML or INI)
 The application must parse a configuration file located at `~/.config/monobar/config.toml` (or standard XDG paths).
 - **Bar Settings:**
-  - `monitor`, `width`, `height`, `offset_x`, `offset_y`, `padding`, `module_margin`
+  - `monitor`, `width`, `height`, `offset_x`, `offset_side`, `offset_y`/`offset_top`, `float`, `radius_top_left`, `radius_top_right`, `radius_bottom_right`, `radius_bottom_left`, `padding`, `module_margin`
   - Colors: HEX/RGBA format for `background`, `foreground`, `border`, `accent`
   - Fonts: Support primary text font + fallback glyph/symbol font (e.g., Nerd Fonts, SF Pro, FontAwesome) with baseline alignment.
 - **Layout Definition:**

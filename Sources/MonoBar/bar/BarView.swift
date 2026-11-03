@@ -22,9 +22,15 @@ final class BarView: NSView {
     override var acceptsFirstResponder: Bool { false }
 
     override func draw(_ dirtyRect: NSRect) {
-        config.background.setFill(); NSBezierPath(roundedRect: bounds, xRadius: 0, yRadius: 0).fill()
+        config.background.setFill(); barBackgroundPath().fill()
         config.border.withAlphaComponent(0.65).setStroke()
-        let edge = NSBezierPath(); edge.move(to: NSPoint(x: 0, y: 0.5)); edge.line(to: NSPoint(x: bounds.width, y: 0.5)); edge.lineWidth = 1; edge.stroke()
+        let bottomLeft = min(config.radiusBottomLeft, min(bounds.width, bounds.height) / 2)
+        let bottomRight = min(config.radiusBottomRight, min(bounds.width, bounds.height) / 2)
+        let edge = NSBezierPath()
+        edge.move(to: NSPoint(x: bottomLeft, y: 0.5))
+        edge.line(to: NSPoint(x: bounds.width - bottomRight, y: 0.5))
+        edge.lineWidth = 1
+        edge.stroke()
         hitTargets.removeAll(keepingCapacity: true)
         scrollTargets.removeAll(keepingCapacity: true)
         let left = model.values(for: config.left)
@@ -34,6 +40,46 @@ final class BarView: NSView {
         let rightWidth = draw(right, startingAt: bounds.width - config.padding, align: .right)
         _ = draw(center, startingAt: bounds.midX, align: .center)
         _ = leftWidth; _ = rightWidth
+    }
+
+    private func barBackgroundPath() -> NSBezierPath {
+        let width = bounds.width
+        let height = bounds.height
+        let limit = min(width, height) / 2
+        let topLeft = min(config.radiusTopLeft, limit)
+        let topRight = min(config.radiusTopRight, limit)
+        let bottomRight = min(config.radiusBottomRight, limit)
+        let bottomLeft = min(config.radiusBottomLeft, limit)
+        let curve: CGFloat = 0.55228475
+        let path = NSBezierPath()
+
+        path.move(to: NSPoint(x: bottomLeft, y: 0))
+        path.line(to: NSPoint(x: width - bottomRight, y: 0))
+        path.curve(
+            to: NSPoint(x: width, y: bottomRight),
+            controlPoint1: NSPoint(x: width - bottomRight + bottomRight * curve, y: 0),
+            controlPoint2: NSPoint(x: width, y: bottomRight - bottomRight * curve)
+        )
+        path.line(to: NSPoint(x: width, y: height - topRight))
+        path.curve(
+            to: NSPoint(x: width - topRight, y: height),
+            controlPoint1: NSPoint(x: width, y: height - topRight + topRight * curve),
+            controlPoint2: NSPoint(x: width - topRight + topRight * curve, y: height)
+        )
+        path.line(to: NSPoint(x: topLeft, y: height))
+        path.curve(
+            to: NSPoint(x: 0, y: height - topLeft),
+            controlPoint1: NSPoint(x: topLeft - topLeft * curve, y: height),
+            controlPoint2: NSPoint(x: 0, y: height - topLeft + topLeft * curve)
+        )
+        path.line(to: NSPoint(x: 0, y: bottomLeft))
+        path.curve(
+            to: NSPoint(x: bottomLeft, y: 0),
+            controlPoint1: NSPoint(x: 0, y: bottomLeft - bottomLeft * curve),
+            controlPoint2: NSPoint(x: bottomLeft - bottomLeft * curve, y: 0)
+        )
+        path.close()
+        return path
     }
 
     private func draw(_ items: [ModuleValue], startingAt x: CGFloat, align: NSTextAlignment) -> CGFloat {

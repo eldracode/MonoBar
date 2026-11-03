@@ -56,16 +56,30 @@ final class BarModel {
             }
             case "title":
                 guard !aerospace.windows.isEmpty else { return [] }
-                var occurrences: [String: Int] = [:]
-                let totals = Dictionary(grouping: aerospace.windows, by: \.appName).mapValues(\.count)
-                var values = [ModuleValue(text: "│", muted: true)]
+                var groups: [(appName: String, windows: [WindowItem])] = []
+                var groupIndices: [String: Int] = [:]
                 for window in aerospace.windows {
-                    if values.count > 1 { values.append(ModuleValue(text: "•", muted: true)) }
-                    occurrences[window.appName, default: 0] += 1
-                    let label = (totals[window.appName] ?? 0) > 1
-                        ? "\(window.appName) \(occurrences[window.appName]!)"
-                        : window.appName
-                    values.append(ModuleValue(text: label, action: "window:\(window.id)", accent: window.focused))
+                    if let index = groupIndices[window.appName] {
+                        groups[index].windows.append(window)
+                    } else {
+                        groupIndices[window.appName] = groups.count
+                        groups.append((window.appName, [window]))
+                    }
+                }
+                var values = [ModuleValue(text: "│", muted: true)]
+                for (groupIndex, group) in groups.enumerated() {
+                    if groupIndex > 0 { values.append(ModuleValue(text: "•", muted: true)) }
+                    if group.windows.count == 1, let window = group.windows.first {
+                        values.append(ModuleValue(text: group.appName, action: "window:\(window.id)", accent: window.focused))
+                        continue
+                    }
+                    values.append(ModuleValue(text: group.appName))
+                    values.append(ModuleValue(text: "[", muted: true))
+                    for (index, window) in group.windows.enumerated() {
+                        if index > 0 { values.append(ModuleValue(text: "•", muted: true)) }
+                        values.append(ModuleValue(text: "\(index + 1)", action: "window:\(window.id)", accent: window.focused))
+                    }
+                    values.append(ModuleValue(text: "]", muted: true))
                 }
                 return values
             case "clock":
@@ -146,7 +160,7 @@ final class BarModel {
     }
     private func inputVolumeText() -> String {
         let level = inputVolume.map { "\($0)%" } ?? "—"
-        return "🎙️\(inputMuted == true ? " Muted" : "") \(level)"
+        return "🎙️\(inputMuted == true ? " ❌" : "") \(level)"
     }
     private func defaultAudioDevice(isInput: Bool) -> AudioDeviceID? {
         var address = AudioObjectPropertyAddress(
