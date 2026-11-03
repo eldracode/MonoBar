@@ -35,6 +35,10 @@ open -a "$HOME/Applications/MonoBar.app"
 ```
 Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the example socket path with your home path, then run the executable. `XDG_CONFIG_HOME` is also supported. Existing `MonoBar` configuration files are still read as a fallback.
 
+## Preview
+
+  ![Default theme](./Assets/default_theme.png)
+
 ## AeroSpace events
 
 See `aerospace.toml.example`; merge the hook into your AeroSpace config and reload AeroSpace. Workspace pills invoke `aerospace workspace <name>`. The bar refreshes workspaces on hook events and reads the focused window title during refresh.
