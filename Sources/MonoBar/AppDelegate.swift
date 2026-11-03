@@ -40,6 +40,9 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
         RunLoop.main.add(fullscreenTimer, forMode: .common)
         self.fullscreenTimer = fullscreenTimer
         updateFullscreenVisibility(forceShow: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.updateFullscreenVisibility(forceShow: true)
+        }
         let weatherLocationTimer = Timer(timeInterval: config.weatherRefreshMinutes * 60, repeats: true) { [weak self] _ in
             self?.requestWeatherLocationIfNeeded()
         }

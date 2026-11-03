@@ -90,7 +90,7 @@ final class BarView: NSView {
                let iconFont = NSFont(name: "Font Awesome 6 Brands", size: config.fontSize) {
                 return ("\u{f293}" as NSString).size(withAttributes: [.font: iconFont]).width
             }
-            if item.symbolName != nil { return config.fontSize }
+            if let image = symbolImage(for: item) { return image.size.width }
             let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color(for: item)]
             return (item.text as NSString).size(withAttributes: attrs).width
         }
@@ -103,13 +103,15 @@ final class BarView: NSView {
             let rect = NSRect(x: cursor, y: y, width: widths[index], height: font.ascender - font.descender + font.leading)
             if item.symbolName == "fontawesome-bluetooth", Self.fontAwesomeRegistered,
                let iconFont = NSFont(name: "Font Awesome 6 Brands", size: config.fontSize) {
-                ("\u{f293}" as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: iconFont, .foregroundColor: config.accent])
-            } else if let symbolName = item.symbolName,
-               let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?.withSymbolConfiguration(
-                   NSImage.SymbolConfiguration(pointSize: config.fontSize, weight: .regular)
-                       .applying(NSImage.SymbolConfiguration(paletteColors: [config.accent]))
-               ) {
-                symbol.draw(in: NSRect(x: cursor, y: (bounds.height - config.fontSize) / 2, width: config.fontSize, height: config.fontSize))
+                ("\u{f293}" as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: iconFont, .foregroundColor: color(for: item)])
+            } else if let symbol = symbolImage(for: item) {
+                let iconRect = NSRect(
+                    x: cursor,
+                    y: (bounds.height - symbol.size.height) / 2,
+                    width: symbol.size.width,
+                    height: symbol.size.height
+                )
+                symbol.draw(in: iconRect)
             } else {
                 (item.text as NSString).draw(at: NSPoint(x: cursor, y: y), withAttributes: [.font: font, .foregroundColor: color(for: item)])
             }
@@ -118,6 +120,21 @@ final class BarView: NSView {
             cursor += widths[index] + (item.spacingAfter ?? config.moduleMargin)
         }
         return total
+    }
+
+    private func symbolImage(for item: ModuleValue) -> NSImage? {
+        guard let symbolName = item.symbolName else { return nil }
+        let resolvedName = symbolName == "fontawesome-bluetooth" ? "antenna.radiowaves.left.and.right" : symbolName
+        let image: NSImage?
+        if let variableValue = item.symbolVariableValue {
+            image = NSImage(systemSymbolName: resolvedName, variableValue: variableValue, accessibilityDescription: nil)
+        } else {
+            image = NSImage(systemSymbolName: resolvedName, accessibilityDescription: nil)
+        }
+        return image?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: config.fontSize, weight: .medium)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [color(for: item)]))
+        )
     }
 
     private func color(for item: ModuleValue) -> NSColor {

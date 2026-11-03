@@ -22,7 +22,8 @@ final class BarModel {
     private var outputMuted: Bool?
     private var inputMuted: Bool?
     private var weatherLocation: CLLocationCoordinate2D?
-    private var weatherText = "🌡️ —"
+    private var weatherText = "—"
+    private var weatherSymbolName = "thermometer.sun"
     private var lastWeatherAttempt = Date.distantPast
     private var weatherRequest: URLSessionDataTask?
 
@@ -86,15 +87,20 @@ final class BarModel {
                 let now = Date()
                 let time = DateFormatter.localizedString(from: now, dateStyle: .none, timeStyle: .short)
                 let date = DateFormatter.localizedString(from: now, dateStyle: .medium, timeStyle: .none)
-                return [ModuleValue(text: "🕒 \(time)  📅 \(date)")]
-            case "battery": return [ModuleValue(text: batteryText())]
-            case "cpu": return [ModuleValue(text: String(format: "⚙️ %.0f%%", lastCPU))]
-            case "ram": return [ModuleValue(text: memoryText())]
-            case "volume": return [ModuleValue(text: outputVolumeText(), action: "toggle:mute-output", scrollAction: "volume:output")]
-            case "mic": return [ModuleValue(text: inputVolumeText(), action: "toggle:mute-input", scrollAction: "volume:input")]
-            case "wifi": return [ModuleValue(text: wifiText(), action: "toggle:wifi")]
+                return [
+                    ModuleValue(text: "", spacingAfter: 3, symbolName: "clock"),
+                    ModuleValue(text: time),
+                    ModuleValue(text: "", spacingAfter: 3, symbolName: "calendar"),
+                    ModuleValue(text: date)
+                ]
+            case "battery": return batteryValues()
+            case "cpu": return [ModuleValue(text: "", spacingAfter: 3, symbolName: "cpu"), ModuleValue(text: String(format: "%.0f%%", lastCPU))]
+            case "ram": return [ModuleValue(text: "", spacingAfter: 3, symbolName: "memorychip"), ModuleValue(text: memoryText())]
+            case "volume": return volumeValues(isInput: false)
+            case "mic": return volumeValues(isInput: true)
+            case "wifi": return wifiValues()
             case "bluetooth": return bluetoothValues()
-            case "weather": return [ModuleValue(text: weatherText)]
+            case "weather": return [ModuleValue(text: "", spacingAfter: 3, symbolName: weatherSymbolName), ModuleValue(text: weatherText)]
             case "music": return []
             default: return []
             }
@@ -137,7 +143,8 @@ final class BarModel {
     }
 
     func weatherLocationUnavailable(_ reason: String) {
-        weatherText = "🌡️ \(reason)"
+        weatherSymbolName = "location.slash"
+        weatherText = reason
         notifyChange()
     }
 
@@ -151,16 +158,17 @@ final class BarModel {
         notifyChange()
     }
     private func notifyChange() { observers.forEach { $0() } }
-    private func volumeText(_ level: Int?, icon: String) -> String {
-        guard let level else { return "\(icon) —" }
-        return "\(icon) \(level)%"
-    }
-    private func outputVolumeText() -> String {
-        volumeText(outputVolume, icon: outputMuted == true ? "🔇" : "🔊")
-    }
-    private func inputVolumeText() -> String {
-        let level = inputVolume.map { "\($0)%" } ?? "—"
-        return "🎙️\(inputMuted == true ? " ❌" : "") \(level)"
+    private func volumeValues(isInput: Bool) -> [ModuleValue] {
+        let action = isInput ? "toggle:mute-input" : "toggle:mute-output"
+        let scrollAction = isInput ? "volume:input" : "volume:output"
+        let muted = isInput ? inputMuted == true : outputMuted == true
+        let symbol = isInput
+            ? (muted ? "mic.slash.fill" : "mic.fill")
+            : (muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+        let level = isInput ? inputVolume : outputVolume
+        let icon = ModuleValue(text: "", action: action, spacingAfter: 3, symbolName: symbol, scrollAction: scrollAction)
+        let value = ModuleValue(text: level.map { "\($0)%" } ?? "—", action: action, scrollAction: scrollAction)
+        return [icon, value]
     }
     private func defaultAudioDevice(isInput: Bool) -> AudioDeviceID? {
         var address = AudioObjectPropertyAddress(
@@ -217,17 +225,25 @@ final class BarModel {
         if isInput { inputMuted = muted != 0 } else { outputMuted = muted != 0 }
         notifyChange()
     }
-    private func batteryText() -> String {
-        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else { return "🔋 —" }
+    private func batteryValues() -> [ModuleValue] {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else {
+            return [ModuleValue(text: "", spacingAfter: 3, symbolName: "battery.0percent"), ModuleValue(text: "—")]
+        }
         let current = description[kIOPSCurrentCapacityKey] as? Int ?? 0
         let charging = description[kIOPSIsChargingKey] as? Bool ?? false
-        return "🔋 \(current)%\(charging ? " +" : "")"
+        let onACPower = (description[kIOPSPowerSourceStateKey] as? String) == "AC Power"
+        let level = min(100, max(0, current))
+        let symbol = charging || onACPower ? "battery.100percent.bolt" : "battery.100percent"
+        return [
+            ModuleValue(text: "", spacingAfter: 3, symbolName: symbol, symbolVariableValue: Double(level) / 100),
+            ModuleValue(text: "\(level)%")
+        ]
     }
     private func wifiText() -> String {
-        guard let interface = wifiClient.interface() else { return "🛜 —" }
-        guard interface.powerOn() else { return "🛜 Off" }
-        if let ssid = interface.ssid(), !ssid.isEmpty { return "🛜 \(ssid)" }
-        guard let store = systemConfigStore else { return "🛜 —" }
+        guard let interface = wifiClient.interface() else { return "—" }
+        guard interface.powerOn() else { return "Off" }
+        if let ssid = interface.ssid(), !ssid.isEmpty { return ssid }
+        guard let store = systemConfigStore else { return "—" }
         var interfaces = wifiClient.interfaceNames() ?? []
         if let defaultInterface = wifiClient.interface()?.interfaceName, !interfaces.contains(defaultInterface) {
             interfaces.insert(defaultInterface, at: 0)
@@ -237,9 +253,18 @@ final class BarModel {
             guard let state = SCDynamicStoreCopyValue(store, key) as? [String: Any],
                   let ssid = (state["SSID_STR"] as? String) ?? (state["SSID"] as? String),
                   !ssid.isEmpty else { continue }
-            return "🛜 \(ssid)"
+            return ssid
         }
-        return "🛜 —"
+        return "—"
+    }
+    private func wifiValues() -> [ModuleValue] {
+        let state = wifiText()
+        let action = "toggle:wifi"
+        let symbol = state == "Off" ? "wifi.slash" : "wifi"
+        return [
+            ModuleValue(text: "", action: action, spacingAfter: 3, symbolName: symbol),
+            ModuleValue(text: state, action: action)
+        ]
     }
     private func bluetoothValues() -> [ModuleValue] {
         guard IOBluetoothHostController.default()?.powerState == kBluetoothHCIPowerStateON else {
@@ -341,11 +366,12 @@ final class BarModel {
                 return
             }
             let icon = condition["icon"] as? String ?? ""
-            let symbol = Self.weatherSymbol(code: code, icon: icon)
+            let symbolName = Self.weatherSymbol(code: code, icon: icon)
             let unit = units == "metric" ? "°C" : (units == "imperial" ? "°F" : " K")
-            let summary = "\(symbol) \(Int(temperature.rounded()))\(unit)"
+            let summary = "\(Int(temperature.rounded()))\(unit)"
             Task { @MainActor [weak self] in
                 self?.weatherText = summary
+                self?.weatherSymbolName = symbolName
                 self?.weatherRequest = nil
                 self?.notifyChange()
             }
@@ -353,30 +379,31 @@ final class BarModel {
         weatherRequest?.resume()
     }
     private func setWeatherStatus(_ status: String) {
-        weatherText = "🌡️ \(status)"
+        weatherSymbolName = "exclamationmark.triangle.fill"
+        weatherText = status
         weatherRequest = nil
         notifyChange()
     }
     private static func weatherSymbol(code: Int, icon: String) -> String {
         switch code {
-        case 200..<300: return "⛈️"
-        case 300..<400: return "🌦️"
-        case 500..<600: return "🌧️"
-        case 600..<700: return "❄️"
-        case 700..<800: return "🌫️"
-        case 800: return icon.hasSuffix("n") ? "🌙" : "☀️"
-        case 801: return icon.hasSuffix("n") ? "☁️" : "🌤️"
-        default: return "☁️"
+        case 200..<300: return "cloud.bolt.rain.fill"
+        case 300..<400: return "cloud.drizzle.fill"
+        case 500..<600: return "cloud.rain.fill"
+        case 600..<700: return "snowflake"
+        case 700..<800: return "cloud.fog.fill"
+        case 800: return icon.hasSuffix("n") ? "moon.fill" : "sun.max.fill"
+        case 801: return icon.hasSuffix("n") ? "cloud.moon.fill" : "cloud.sun.fill"
+        default: return "cloud.fill"
         }
     }
     private func memoryText() -> String {
         var stats = vm_statistics64(); var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &stats) { p in p.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count) } }
-        guard result == KERN_SUCCESS else { return "▤ —" }
+        guard result == KERN_SUCCESS else { return "—" }
         var pageSize: vm_size_t = 0
-        guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS else { return "▤ —" }
+        guard host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS else { return "—" }
         let used = UInt64(stats.active_count + stats.wire_count + stats.compressor_page_count) * UInt64(pageSize)
-        return String(format: "▤ %.1fG", Double(used) / 1_073_741_824)
+        return String(format: "%.1fG", Double(used) / 1_073_741_824)
     }
     private func cpuUsage() -> Double {
         var info = host_cpu_load_info(); var count = mach_msg_type_number_t(MemoryLayout<host_cpu_load_info_data_t>.size / MemoryLayout<integer_t>.size)
