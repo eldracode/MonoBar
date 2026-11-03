@@ -6,6 +6,8 @@ A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderle
 
 Requires macOS 13+ and Swift 6.
 
+Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
+
 ```sh
 make build
 ```

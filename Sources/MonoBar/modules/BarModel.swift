@@ -53,7 +53,7 @@ final class BarModel {
             case "battery": return [ModuleValue(text: batteryText())]
             case "cpu": return [ModuleValue(text: String(format: "⚙️ %.0f%%", lastCPU))]
             case "ram": return [ModuleValue(text: memoryText())]
-            case "wifi": return [ModuleValue(text: wifiText())]
+            case "wifi": return [ModuleValue(text: wifiText(), action: "toggle:wifi")]
             case "bluetooth": return bluetoothValues()
             case "music": return []
             default: return []
@@ -64,6 +64,8 @@ final class BarModel {
     func perform(_ action: String) {
         if action.hasPrefix("workspace:") { aerospace.focus(String(action.dropFirst("workspace:".count))); aerospace.refresh() }
         else if action.hasPrefix("window:") { aerospace.focusWindow(String(action.dropFirst("window:".count))); aerospace.refresh() }
+        else if action == "toggle:wifi" { toggleWiFi() }
+        else if action == "toggle:bluetooth" { toggleBluetooth() }
     }
 
     private func tick() { lastCPU = cpuUsage(); notifyChange() }
@@ -75,7 +77,9 @@ final class BarModel {
         return "🔋 \(current)%\(charging ? " +" : "")"
     }
     private func wifiText() -> String {
-        if let ssid = wifiClient.interface()?.ssid(), !ssid.isEmpty { return "🛜 \(ssid)" }
+        guard let interface = wifiClient.interface() else { return "🛜 —" }
+        guard interface.powerOn() else { return "🛜 Off" }
+        if let ssid = interface.ssid(), !ssid.isEmpty { return "🛜 \(ssid)" }
         guard let store = systemConfigStore else { return "🛜 —" }
         var interfaces = wifiClient.interfaceNames() ?? []
         if let defaultInterface = wifiClient.interface()?.interfaceName, !interfaces.contains(defaultInterface) {
@@ -92,12 +96,46 @@ final class BarModel {
     }
     private func bluetoothValues() -> [ModuleValue] {
         guard IOBluetoothHostController.default()?.powerState == kBluetoothHCIPowerStateON else {
-            return [ModuleValue(text: "", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: "Off")]
+            return [ModuleValue(text: "", action: "toggle:bluetooth", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: "Off", action: "toggle:bluetooth")]
         }
         let connected = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? [])
             .first(where: { $0.isConnected() })
         let state = connected?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "On"
-        return [ModuleValue(text: "", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: state)]
+        return [ModuleValue(text: "", action: "toggle:bluetooth", spacingAfter: 3, symbolName: "fontawesome-bluetooth"), ModuleValue(text: state, action: "toggle:bluetooth")]
+    }
+    private func toggleWiFi() {
+        guard let interface = wifiClient.interface() else { return }
+        do {
+            try interface.setPower(!interface.powerOn())
+            notifyChange()
+        } catch {
+            NSLog("MonoBar could not toggle Wi-Fi: %@", error.localizedDescription)
+        }
+    }
+    private func toggleBluetooth() {
+        let path = ["/opt/homebrew/bin/blueutil", "/usr/local/bin/blueutil"]
+            .first(where: { FileManager.default.isExecutableFile(atPath: $0) })
+        guard let path else { return }
+        let state = runBlueutil(path: path, arguments: ["--power"]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard state == "0" || state == "1" else { return }
+        _ = runBlueutil(path: path, arguments: ["--power", state == "1" ? "0" : "1"])
+        notifyChange()
+    }
+    private func runBlueutil(path: String, arguments: [String]) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = arguments
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            return process.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : ""
+        } catch {
+            return ""
+        }
     }
     private func memoryText() -> String {
         var stats = vm_statistics64(); var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
