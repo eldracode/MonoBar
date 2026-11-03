@@ -33,9 +33,11 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in self?.updateFullscreenVisibility(forceShow: true) }
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.updateFullscreenVisibility(forceShow: true) }
+        }
         let fullscreenTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            self?.updateFullscreenVisibility()
+            Task { @MainActor [weak self] in self?.updateFullscreenVisibility() }
         }
         RunLoop.main.add(fullscreenTimer, forMode: .common)
         self.fullscreenTimer = fullscreenTimer
@@ -44,7 +46,7 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
             self?.updateFullscreenVisibility(forceShow: true)
         }
         let weatherLocationTimer = Timer(timeInterval: config.weatherRefreshMinutes * 60, repeats: true) { [weak self] _ in
-            self?.requestWeatherLocationIfNeeded()
+            Task { @MainActor [weak self] in self?.requestWeatherLocationIfNeeded() }
         }
         RunLoop.main.add(weatherLocationTimer, forMode: .common)
         self.weatherLocationTimer = weatherLocationTimer
