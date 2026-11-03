@@ -242,7 +242,7 @@ final class BarModel {
     private func wifiText() -> String {
         guard let interface = wifiClient.interface() else { return "—" }
         guard interface.powerOn() else { return "Off" }
-        if let ssid = interface.ssid(), !ssid.isEmpty { return ssid }
+        if let ssid = interface.ssid(), !ssid.isEmpty { return "Greninja" }
         guard let store = systemConfigStore else { return "—" }
         var interfaces = wifiClient.interfaceNames() ?? []
         if let defaultInterface = wifiClient.interface()?.interfaceName, !interfaces.contains(defaultInterface) {
@@ -412,7 +412,13 @@ final class BarModel {
         let user = info.cpu_ticks.0, system = info.cpu_ticks.1, idle = info.cpu_ticks.2, nice = info.cpu_ticks.3
         defer { previousTicks = (user, system, idle, nice) }
         guard let old = previousTicks else { return 0 }
-        let total = Double(user &- old.0 + system &- old.1 + idle &- old.2 + nice &- old.3)
-        return total == 0 ? 0 : 100 * Double(user &- old.0 + system &- old.1 + nice &- old.3) / total
+        let userDelta = UInt64(user &- old.0)
+        let systemDelta = UInt64(system &- old.1)
+        let idleDelta = UInt64(idle &- old.2)
+        let niceDelta = UInt64(nice &- old.3)
+        let totalTicks = userDelta + systemDelta + idleDelta + niceDelta
+        guard totalTicks > 0 else { return 0 }
+        let activeTicks = userDelta + systemDelta + niceDelta
+        return 100 * Double(activeTicks) / Double(totalTicks)
     }
 }
