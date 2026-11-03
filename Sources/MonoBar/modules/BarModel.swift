@@ -1,11 +1,14 @@
 import AppKit
+import CoreLocation
 import CoreWLAN
 import Foundation
 import IOBluetooth
 import IOKit.ps
 import SystemConfiguration
 
+@MainActor
 final class BarModel {
+    private let config: BarConfig
     let aerospace = AeroSpace()
     private let wifiClient = CWWiFiClient.shared()
     private let systemConfigStore = SCDynamicStoreCreate(nil, "MonoBar" as CFString, nil, nil)
@@ -13,8 +16,19 @@ final class BarModel {
     private var timer: Timer?
     private var lastCPU: Double = 0
     private var previousTicks: (UInt32, UInt32, UInt32, UInt32)?
+    private var weatherLocation: CLLocationCoordinate2D?
+    private var weatherText = "🌡️ —"
+    private var lastWeatherAttempt = Date.distantPast
+    private var weatherRequest: URLSessionDataTask?
 
-    init() { aerospace.onChange = { [weak self] in self?.notifyChange() } }
+    init(config: BarConfig) {
+        self.config = config
+        aerospace.onChange = { [weak self] in self?.notifyChange() }
+    }
+
+    var needsWeatherLocation: Bool {
+        weatherEnabled && (config.weatherLatitude == nil || config.weatherLongitude == nil)
+    }
 
     func observe(_ observer: @escaping () -> Void) { observers.append(observer) }
 
@@ -55,6 +69,7 @@ final class BarModel {
             case "ram": return [ModuleValue(text: memoryText())]
             case "wifi": return [ModuleValue(text: wifiText(), action: "toggle:wifi")]
             case "bluetooth": return bluetoothValues()
+            case "weather": return [ModuleValue(text: weatherText)]
             case "music": return []
             default: return []
             }
@@ -68,7 +83,21 @@ final class BarModel {
         else if action == "toggle:bluetooth" { toggleBluetooth() }
     }
 
-    private func tick() { lastCPU = cpuUsage(); notifyChange() }
+    func updateWeatherLocation(_ location: CLLocationCoordinate2D) {
+        weatherLocation = location
+        refreshWeather(force: true)
+    }
+
+    func weatherLocationUnavailable(_ reason: String) {
+        weatherText = "🌡️ \(reason)"
+        notifyChange()
+    }
+
+    private func tick() {
+        lastCPU = cpuUsage()
+        refreshWeather()
+        notifyChange()
+    }
     private func notifyChange() { observers.forEach { $0() } }
     private func batteryText() -> String {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else { return "🔋 —" }
@@ -135,6 +164,91 @@ final class BarModel {
             return process.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : ""
         } catch {
             return ""
+        }
+    }
+    private var weatherEnabled: Bool {
+        config.weatherProvider == "openweather" && !config.weatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    private func refreshWeather(force: Bool = false) {
+        guard weatherEnabled,
+              force || Date().timeIntervalSince(lastWeatherAttempt) >= config.weatherRefreshMinutes * 60 else { return }
+        let coordinates: CLLocationCoordinate2D
+        if let latitude = config.weatherLatitude, let longitude = config.weatherLongitude {
+            coordinates = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        } else if let weatherLocation {
+            coordinates = weatherLocation
+        } else {
+            return
+        }
+
+        let units = config.weatherUnits
+        var components = URLComponents(string: "https://api.openweathermap.org/data/2.5/weather")!
+        components.queryItems = [
+            URLQueryItem(name: "lat", value: String(coordinates.latitude)),
+            URLQueryItem(name: "lon", value: String(coordinates.longitude)),
+            URLQueryItem(name: "appid", value: config.weatherAPIKey),
+            URLQueryItem(name: "units", value: units)
+        ]
+        guard let url = components.url else { return }
+        lastWeatherAttempt = Date()
+        weatherRequest?.cancel()
+        weatherRequest = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            if let urlError = error as? URLError, urlError.code == .cancelled { return }
+            if error != nil {
+                Task { @MainActor [weak self] in self?.setWeatherStatus("Offline") }
+                return
+            }
+            guard let response = response as? HTTPURLResponse else {
+                Task { @MainActor [weak self] in self?.setWeatherStatus("No response") }
+                return
+            }
+            guard response.statusCode == 200 else {
+                let message: String
+                switch response.statusCode {
+                case 401: message = "API key error"
+                case 404: message = "City not found"
+                case 429: message = "Rate limited"
+                default: message = "API \(response.statusCode)"
+                }
+                Task { @MainActor [weak self] in self?.setWeatherStatus(message) }
+                return
+            }
+            guard let data,
+                  let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let main = payload["main"] as? [String: Any],
+                  let temperature = (main["temp"] as? NSNumber)?.doubleValue,
+                  let condition = (payload["weather"] as? [[String: Any]])?.first,
+                  let code = (condition["id"] as? NSNumber)?.intValue else {
+                Task { @MainActor [weak self] in self?.setWeatherStatus("Bad response") }
+                return
+            }
+            let icon = condition["icon"] as? String ?? ""
+            let symbol = Self.weatherSymbol(code: code, icon: icon)
+            let unit = units == "metric" ? "°C" : (units == "imperial" ? "°F" : " K")
+            let summary = "\(symbol) \(Int(temperature.rounded()))\(unit)"
+            Task { @MainActor [weak self] in
+                self?.weatherText = summary
+                self?.weatherRequest = nil
+                self?.notifyChange()
+            }
+        }
+        weatherRequest?.resume()
+    }
+    private func setWeatherStatus(_ status: String) {
+        weatherText = "🌡️ \(status)"
+        weatherRequest = nil
+        notifyChange()
+    }
+    private static func weatherSymbol(code: Int, icon: String) -> String {
+        switch code {
+        case 200..<300: return "⛈️"
+        case 300..<400: return "🌦️"
+        case 500..<600: return "🌧️"
+        case 600..<700: return "❄️"
+        case 700..<800: return "🌫️"
+        case 800: return icon.hasSuffix("n") ? "🌙" : "☀️"
+        case 801: return icon.hasSuffix("n") ? "☁️" : "🌤️"
+        default: return "☁️"
         }
     }
     private func memoryText() -> String {

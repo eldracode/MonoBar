@@ -18,8 +18,14 @@ struct BarConfig {
     var fontSize: CGFloat = 13
     var left = ["workspaces", "title"]
     var center = ["music"]
-    var right = ["cpu", "ram", "battery", "wifi", "bluetooth", "clock"]
+    var right = ["cpu", "ram", "battery", "wifi", "bluetooth", "weather", "clock"]
     var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/events.sock")
+    var weatherProvider = "openweather"
+    var weatherAPIKey = ""
+    var weatherUnits = "metric"
+    var weatherLatitude: Double?
+    var weatherLongitude: Double?
+    var weatherRefreshMinutes: Double = 15
 
     static func load() -> BarConfig {
         let home = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/config.toml")
@@ -77,6 +83,15 @@ struct BarConfig {
             case "layout.modules-left": result.left = strings()
             case "layout.modules-center": result.center = strings()
             case "layout.modules-right": result.right = strings()
+            case "weather.provider": result.weatherProvider = string().lowercased()
+            case "weather.api_key": result.weatherAPIKey = string()
+            case "weather.units":
+                let units = string().lowercased()
+                if ["metric", "imperial", "standard"].contains(units) { result.weatherUnits = units }
+            case "weather.latitude": result.weatherLatitude = Double(value)
+            case "weather.longitude": result.weatherLongitude = Double(value)
+            case "weather.refresh_minutes":
+                if let minutes = Double(value), minutes >= 1 { result.weatherRefreshMinutes = minutes }
             default: break
             }
         }

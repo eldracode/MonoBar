@@ -12,6 +12,10 @@
 	<string>MonoBar.icns</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>LSMinimumSystemVersion</key>
@@ -19,6 +23,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSLocationUsageDescription</key>
-	<string>MonoBar needs Location Services to read the name of your connected Wi-Fi network and display it beside the Wi-Fi icon. It does not record or transmit your location.</string>
+	<string>MonoBar uses Location Services for the connected Wi-Fi name and local weather. Weather coordinates are sent to OpenWeather and are not stored by MonoBar.</string>
 </dict>
 </plist>

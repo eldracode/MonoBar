@@ -8,6 +8,8 @@ Requires macOS 13+ and Swift 6.
 
 Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
 
+Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
+
 ```sh
 make build
 ```
@@ -18,4 +20,4 @@ The executable is `.build/debug/monobar`. Copy `config/config.toml` to `~/.confi
 
 See `aerospace.toml.example`; merge the hook into your AeroSpace config and reload AeroSpace. Workspace pills invoke `aerospace workspace <name>`. The bar refreshes workspaces on hook events and reads the focused window title during refresh.
 
-The implementation is intentionally compact. `music` and `wifi` currently render no playback/network metadata; those modules are extension points. CPU/RAM and battery are sampled with native system APIs, and the clock redraws once a second.
+The implementation is intentionally compact. `music` remains an extension point. Wi-Fi, Bluetooth, and weather use native system APIs or the configured OpenWeather provider; CPU/RAM and battery use native system APIs.

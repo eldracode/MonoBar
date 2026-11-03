@@ -2,23 +2,30 @@ import AppKit
 import CoreLocation
 import Foundation
 
-final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDelegate {
+@MainActor
+final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurrency CLLocationManagerDelegate {
     private let config = BarConfig.load()
-    private let model = BarModel()
+    private lazy var model = BarModel(config: config)
     private let locationManager = CLLocationManager()
     private var panels: [BarPanel] = []
     private var eventSocket: EventSocket?
     private var localMouseMonitor: Any?
     private var globalMouseMonitor: Any?
     private var fullscreenTimer: Timer?
+    private var weatherLocationTimer: Timer?
     private var spaceObserver: NSObjectProtocol?
     private weak var menuBarScreen: NSScreen?
+    private var didStart = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !didStart else { return }
+        didStart = true
         locationManager.delegate = self
         if locationManager.authorizationStatus == .notDetermined {
             NSApp.activate(ignoringOtherApps: true)
             locationManager.requestWhenInUseAuthorization()
+        } else {
+            requestWeatherLocationIfNeeded()
         }
         model.start()
         panels = NSScreen.screens.map { BarPanel(screen: $0, config: config, model: model) }
@@ -26,13 +33,18 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in self?.updateFullscreenVisibility() }
+        ) { [weak self] _ in self?.updateFullscreenVisibility(forceShow: true) }
         let fullscreenTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             self?.updateFullscreenVisibility()
         }
         RunLoop.main.add(fullscreenTimer, forMode: .common)
         self.fullscreenTimer = fullscreenTimer
-        updateFullscreenVisibility()
+        updateFullscreenVisibility(forceShow: true)
+        let weatherLocationTimer = Timer(timeInterval: config.weatherRefreshMinutes * 60, repeats: true) { [weak self] _ in
+            self?.requestWeatherLocationIfNeeded()
+        }
+        RunLoop.main.add(weatherLocationTimer, forMode: .common)
+        self.weatherLocationTimer = weatherLocationTimer
         let socket = EventSocket(path: config.socketPath) { [weak model] in model?.aerospace.refresh() }
         socket.start(); eventSocket = socket
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
@@ -50,9 +62,39 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
         if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
         if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
         fullscreenTimer?.invalidate()
+        weatherLocationTimer?.invalidate()
     }
 
-    private func updateFullscreenVisibility() {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        requestWeatherLocationIfNeeded()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        model.updateWeatherLocation(location.coordinate)
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        model.weatherLocationUnavailable("Location unavailable")
+    }
+
+    private func requestWeatherLocationIfNeeded() {
+        guard model.needsWeatherLocation else { return }
+        let status = locationManager.authorizationStatus
+        switch status {
+        case .authorizedAlways, .authorizedWhenInUse:
+            locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+            locationManager.requestLocation()
+        case .denied, .restricted:
+            model.weatherLocationUnavailable("Location off")
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        @unknown default:
+            model.weatherLocationUnavailable("No location")
+        }
+    }
+
+    private func updateFullscreenVisibility(forceShow: Bool = false) {
         let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
         let mainScreen = NSScreen.screens.first {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == CGMainDisplayID()
@@ -89,6 +131,7 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, CLLocationM
             let isFullscreen = fullscreenScreens.contains(ObjectIdentifier(panel.display))
             if isFullscreen { panel.setMenuBarRevealed(false) }
             panel.setHiddenForFullscreen(isFullscreen)
+            if forceShow && !isFullscreen { panel.showInCurrentSpace() }
         }
     }
 

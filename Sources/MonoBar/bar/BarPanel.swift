@@ -17,7 +17,7 @@ final class BarPanel: NSPanel {
         level = .statusBar
         acceptsMouseMovedEvents = true
         // Stay available across normal Spaces, but do not join fullscreen app Spaces.
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         hidesOnDeactivate = false
         isMovable = false
         contentView = BarView(frame: NSRect(origin: .zero, size: frame.size), config: config, model: model)
@@ -30,13 +30,19 @@ final class BarPanel: NSPanel {
     }
 
     func setHiddenForFullscreen(_ hidden: Bool) {
-        guard hidden != hiddenForFullscreen else { return }
-        hiddenForFullscreen = hidden
         if hidden {
+            guard !hiddenForFullscreen else { return }
+            hiddenForFullscreen = true
             level = .statusBar
             orderOut(nil)
-        } else {
+        } else if hiddenForFullscreen {
+            hiddenForFullscreen = false
             orderFrontRegardless()
         }
+    }
+
+    func showInCurrentSpace() {
+        hiddenForFullscreen = false
+        orderFrontRegardless()
     }
 }

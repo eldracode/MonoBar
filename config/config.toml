@@ -22,4 +22,10 @@ size = 13
 [layout]
 modules-left = ["workspaces", "title"]
 modules-center = ["music"]
-modules-right = ["cpu", "ram", "battery", "wifi", "bluetooth", "clock"]
+modules-right = ["cpu", "ram", "battery", "wifi", "bluetooth", "weather", "clock"]
+
+[weather]
+provider = "openweather"
+api_key = ""
+units = "metric"
+refresh_minutes = 30

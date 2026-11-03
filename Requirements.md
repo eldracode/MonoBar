@@ -40,7 +40,7 @@ The application must parse a configuration file located at `~/.config/monobar/co
 - **Layout Definition:**
   - `modules-left = ["workspaces", "title"]`
   - `modules-center = ["music"]`
-  - `modules-right = ["cpu", "ram", "battery", "wifi", "clock"]`
+  - `modules-right = ["cpu", "ram", "battery", "wifi", "bluetooth", "weather", "clock"]`
 
 ---
 
@@ -51,7 +51,8 @@ Implement standard status bar modules with minimal syscall overhead:
 3. **Battery:** Native reading via `IOPSCopyPowerSourcesInfo` / `IOPSGetPowerSourceDescription` (register for I/O Kit sleep/wake/power state notifications instead of polling).
 4. **Clock / Date:** High-efficiency timer scheduled on `RunLoop` synchronized to the top of each minute or second.
 5. **System Stats (CPU & RAM):** Host statistics via `mach/host_info.h` (`HOST_VM_INFO64`, `host_cpu_load_info`) polling at configurable intervals (e.g., 2–5s).
-6. **Custom Script Module (`custom/script`):**
+6. **Weather:** Current local conditions and temperature through a configurable provider.
+7. **Custom Script Module (`custom/script`):**
    - Support `exec = "sh script.sh"`, `interval = N`, `tail = bool` (stream output line-by-line), `click-left = "command"`.
 
 ---
