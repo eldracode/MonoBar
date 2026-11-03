@@ -8,6 +8,8 @@
 	<string>com.ayushk.monobar</string>
 	<key>CFBundleName</key>
 	<string>MonoBar</string>
+	<key>CFBundleIconFile</key>
+	<string>MonoBar.icns</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
