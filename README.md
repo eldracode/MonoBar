@@ -42,6 +42,8 @@ Display changes rebuild the bars using the matching monitor profile.
 
 Config files support TOML `#` comments on their own lines or after a setting. A `#` inside a quoted string is kept as part of the value.
 
+Press **Control+Shift+R** anywhere to reload `~/.config/monobar/config.toml`. The shortcut rebuilds the bars, modules, monitor profiles, and event socket using the updated settings.
+
 ### For debug builds
 ```sh
 make build

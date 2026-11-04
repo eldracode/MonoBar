@@ -8,6 +8,17 @@ final class EventSocket {
     private var source: DispatchSourceRead?
 
     init(path: String, callback: @escaping () -> Void) { self.path = path; self.callback = callback }
+    func stop() {
+        source?.setEventHandler {}
+        source?.setCancelHandler {}
+        source?.cancel()
+        source = nil
+        if descriptor >= 0 {
+            close(descriptor)
+            descriptor = -1
+        }
+        _ = unlink(path)
+    }
     func start() {
         let directory = (path as NSString).deletingLastPathComponent
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -37,5 +48,5 @@ final class EventSocket {
         }
         readSource.setCancelHandler { close(fd) }; readSource.resume(); source = readSource
     }
-    deinit { source?.cancel() }
+    deinit { stop() }
 }

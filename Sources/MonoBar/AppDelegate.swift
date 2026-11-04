@@ -1,10 +1,11 @@
 import AppKit
+import Carbon
 import CoreLocation
 import Foundation
 
 @MainActor
 final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurrency CLLocationManagerDelegate {
-    private let config = BarConfig.load()
+    private var config = BarConfig.load()
     private lazy var model = BarModel(config: config)
     private let locationManager = CLLocationManager()
     private var panels: [BarPanel] = []
@@ -15,6 +16,8 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
     private var weatherLocationTimer: Timer?
     private var spaceObserver: NSObjectProtocol?
     private var screenObserver: NSObjectProtocol?
+    private var reloadHotKey: EventHotKeyRef?
+    private var reloadHotKeyHandler: EventHandlerRef?
     private weak var menuBarScreen: NSScreen?
     private var didStart = false
 
@@ -29,6 +32,7 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
             requestWeatherLocationIfNeeded()
         }
         model.start()
+        registerReloadShortcut()
         rebuildPanelsForConnectedScreens()
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -53,13 +57,8 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.updateFullscreenVisibility(forceShow: true)
         }
-        let weatherLocationTimer = Timer(timeInterval: config.weatherRefreshMinutes * 60, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.requestWeatherLocationIfNeeded() }
-        }
-        RunLoop.main.add(weatherLocationTimer, forMode: .common)
-        self.weatherLocationTimer = weatherLocationTimer
-        let socket = EventSocket(path: config.socketPath) { [weak model] in model?.aerospace.refresh() }
-        socket.start(); eventSocket = socket
+        startWeatherLocationTimer()
+        startEventSocket()
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
             self?.updateMenuBarLevel(at: NSEvent.mouseLocation)
             return event
@@ -75,6 +74,10 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
         if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
         if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        if let reloadHotKey { UnregisterEventHotKey(reloadHotKey) }
+        if let reloadHotKeyHandler { RemoveEventHandler(reloadHotKeyHandler) }
+        eventSocket?.stop()
+        model.stop()
         fullscreenTimer?.invalidate()
         weatherLocationTimer?.invalidate()
     }
@@ -106,6 +109,63 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
         @unknown default:
             model.weatherLocationUnavailable("No location")
         }
+    }
+
+    private func registerReloadShortcut() {
+        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        let callback: EventHandlerProcPtr = { _, _, userData in
+            guard let userData else { return noErr }
+            let appDelegate = Unmanaged<BarApplicationDelegate>.fromOpaque(userData).takeUnretainedValue()
+            Task { @MainActor in appDelegate.reloadConfiguration() }
+            return noErr
+        }
+        let handlerStatus = InstallEventHandler(
+            GetApplicationEventTarget(), callback, 1, &eventType,
+            Unmanaged.passUnretained(self).toOpaque(), &reloadHotKeyHandler
+        )
+        guard handlerStatus == noErr else { return }
+
+        let hotKeyID = EventHotKeyID(signature: 0x4D424152, id: 1)
+        let hotKeyStatus = RegisterEventHotKey(
+            UInt32(kVK_ANSI_R), UInt32(controlKey | shiftKey), hotKeyID,
+            GetApplicationEventTarget(), 0, &reloadHotKey
+        )
+        if hotKeyStatus != noErr {
+            RemoveEventHandler(reloadHotKeyHandler)
+            reloadHotKeyHandler = nil
+        }
+    }
+
+    private func reloadConfiguration() {
+        model.stop()
+        panels.forEach { $0.close() }
+        panels.removeAll()
+        eventSocket?.stop()
+        eventSocket = nil
+        weatherLocationTimer?.invalidate()
+        weatherLocationTimer = nil
+
+        config = BarConfig.load()
+        model = BarModel(config: config)
+        model.start()
+        requestWeatherLocationIfNeeded()
+        rebuildPanelsForConnectedScreens()
+        startWeatherLocationTimer()
+        startEventSocket()
+    }
+
+    private func startWeatherLocationTimer() {
+        let timer = Timer(timeInterval: config.weatherRefreshMinutes * 60, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.requestWeatherLocationIfNeeded() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        weatherLocationTimer = timer
+    }
+
+    private func startEventSocket() {
+        let socket = EventSocket(path: config.socketPath) { [weak model] in model?.aerospace.refresh() }
+        socket.start()
+        eventSocket = socket
     }
 
     private func updateFullscreenVisibility(forceShow: Bool = false) {

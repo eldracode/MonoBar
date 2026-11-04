@@ -48,6 +48,13 @@ final class BarModel {
         RunLoop.main.add(timer, forMode: .common); self.timer = timer
     }
 
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        weatherRequest?.cancel()
+        weatherRequest = nil
+    }
+
     func values(for names: [String]) -> [ModuleValue] {
         names.flatMap { name -> [ModuleValue] in
             switch name {
