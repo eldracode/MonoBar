@@ -119,20 +119,9 @@ final class BarModel {
     func adjustVolume(_ target: String, by delta: Int) {
         let isInput = target == "input"
         guard isInput || target == "output", delta != 0,
-              let current = readVolume(isInput: isInput),
-              let device = defaultAudioDevice(isInput: isInput) else { return }
+              let current = readVolume(isInput: isInput) else { return }
         let next = min(100, max(0, current + delta))
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyVolumeScalar,
-            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var scalar = Float32(next) / 100
-        let status = AudioObjectSetPropertyData(
-            device, &address, 0, nil,
-            UInt32(MemoryLayout<Float32>.size), &scalar
-        )
-        guard status == noErr else { return }
+        guard setVolume(Float32(next) / 100, isInput: isInput) else { return }
         if isInput { inputVolume = next } else { outputVolume = next }
         notifyChange()
     }
@@ -185,24 +174,58 @@ final class BarModel {
     }
     private func readVolume(isInput: Bool) -> Int? {
         guard let device = defaultAudioDevice(isInput: isInput) else { return nil }
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyVolumeScalar,
-            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
-            mElement: kAudioObjectPropertyElementMain
-        )
+        let scope = audioScope(isInput: isInput)
+        let main = kAudioObjectPropertyElementMain
+        let channels = [AudioObjectPropertyElement(1), AudioObjectPropertyElement(2)]
+        let scalar: Float32
+        if let master = readScalar(device, scope: scope, element: main) {
+            scalar = master
+        } else {
+            let channelValues = channels.compactMap { readScalar(device, scope: scope, element: $0) }
+            guard !channelValues.isEmpty else { return nil }
+            scalar = channelValues.reduce(0, +) / Float32(channelValues.count)
+        }
+        return Int((min(1, max(0, scalar)) * 100).rounded())
+    }
+    private func setVolume(_ scalar: Float32, isInput: Bool) -> Bool {
+        guard let device = defaultAudioDevice(isInput: isInput) else { return false }
+        let scope = audioScope(isInput: isInput)
+        if setScalar(scalar, device: device, scope: scope, element: kAudioObjectPropertyElementMain) {
+            return true
+        }
+        let channels = [AudioObjectPropertyElement(1), AudioObjectPropertyElement(2)]
+        return channels.reduce(false) { succeeded, element in
+            setScalar(scalar, device: device, scope: scope, element: element) || succeeded
+        }
+    }
+    private func readScalar(_ device: AudioDeviceID, scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Float32? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar, mScope: scope, mElement: element)
         var scalar: Float32 = 0
         var size = UInt32(MemoryLayout<Float32>.size)
         let status = AudioObjectGetPropertyData(device, &address, 0, nil, &size, &scalar)
-        guard status == noErr else { return nil }
-        return Int((min(1, max(0, scalar)) * 100).rounded())
+        return status == noErr ? scalar : nil
+    }
+    private func setScalar(_ scalar: Float32, device: AudioDeviceID, scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Bool {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyVolumeScalar, mScope: scope, mElement: element)
+        var settable = DarwinBoolean(false)
+        guard AudioObjectIsPropertySettable(device, &address, &settable) == noErr, settable.boolValue else { return false }
+        var value = scalar
+        let status = AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
+        return status == noErr
+    }
+    private func audioScope(isInput: Bool) -> AudioObjectPropertyScope {
+        isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput
     }
     private func readMute(isInput: Bool) -> Bool? {
         guard let device = defaultAudioDevice(isInput: isInput) else { return nil }
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyMute,
-            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
-            mElement: kAudioObjectPropertyElementMain
-        )
+        let scope = audioScope(isInput: isInput)
+        if let main = readMute(device, scope: scope, element: kAudioObjectPropertyElementMain) { return main }
+        let channelValues = [AudioObjectPropertyElement(1), AudioObjectPropertyElement(2)]
+            .compactMap { readMute(device, scope: scope, element: $0) }
+        return channelValues.isEmpty ? nil : channelValues.allSatisfy { $0 }
+    }
+    private func readMute(_ device: AudioDeviceID, scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Bool? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute, mScope: scope, mElement: element)
         var muted: UInt32 = 0
         var size = UInt32(MemoryLayout<UInt32>.size)
         let status = AudioObjectGetPropertyData(device, &address, 0, nil, &size, &muted)
@@ -211,19 +234,26 @@ final class BarModel {
     private func toggleMute(isInput: Bool) {
         guard let device = defaultAudioDevice(isInput: isInput),
               let current = readMute(isInput: isInput) else { return }
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyMute,
-            mScope: isInput ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput,
-            mElement: kAudioObjectPropertyElementMain
-        )
         var muted: UInt32 = current ? 0 : 1
-        let status = AudioObjectSetPropertyData(
-            device, &address, 0, nil,
-            UInt32(MemoryLayout<UInt32>.size), &muted
-        )
-        guard status == noErr else { return }
+        let scope = audioScope(isInput: isInput)
+        guard setMute(muted, device: device, scope: scope, element: kAudioObjectPropertyElementMain)
+                || setMuteChannels(muted, device: device, scope: scope) else { return }
         if isInput { inputMuted = muted != 0 } else { outputMuted = muted != 0 }
         notifyChange()
+    }
+    private func setMuteChannels(_ muted: UInt32, device: AudioDeviceID, scope: AudioObjectPropertyScope) -> Bool {
+        let channels = [AudioObjectPropertyElement(1), AudioObjectPropertyElement(2)]
+        return channels.reduce(false) { succeeded, element in
+            setMute(muted, device: device, scope: scope, element: element) || succeeded
+        }
+    }
+    private func setMute(_ muted: UInt32, device: AudioDeviceID, scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement) -> Bool {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute, mScope: scope, mElement: element)
+        var settable = DarwinBoolean(false)
+        guard AudioObjectIsPropertySettable(device, &address, &settable) == noErr, settable.boolValue else { return false }
+        var value = muted
+        let status = AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value)
+        return status == noErr
     }
     private func batteryValues() -> [ModuleValue] {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(), let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef], let source = list.first, let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any] else {
