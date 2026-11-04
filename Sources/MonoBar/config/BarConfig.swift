@@ -1,6 +1,26 @@
 import AppKit
 import Foundation
 
+struct MonitorConfig {
+    var screen: String?
+    var width: String?
+    var height: CGFloat?
+    var offsetX: CGFloat?
+    var offsetY: CGFloat?
+    var offsetTop: CGFloat?
+    var offsetSide: CGFloat?
+    var floating: Bool?
+    var radiusTopLeft: CGFloat?
+    var radiusTopRight: CGFloat?
+    var radiusBottomRight: CGFloat?
+    var radiusBottomLeft: CGFloat?
+    var padding: CGFloat?
+    var moduleMargin: CGFloat?
+    var left: [String]?
+    var center: [String]?
+    var right: [String]?
+}
+
 struct BarConfig {
     var monitor = "main"
     var width = "100%"
@@ -35,6 +55,40 @@ struct BarConfig {
     var weatherRefreshMinutes: Double = 15
     var wifiSSIDMasked = false
     var maskedSSIDName = "<redacted>"
+    var monitorConfigs: [MonitorConfig] = []
+
+    func config(for screen: NSScreen) -> BarConfig {
+        guard let override = monitorConfigs.first(where: { profile in
+            guard let selector = profile.screen else { return false }
+            if selector.caseInsensitiveCompare("main") == .orderedSame {
+                return (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == CGMainDisplayID()
+            }
+            if selector.lowercased().hasPrefix("id:"),
+               let id = UInt32(selector.dropFirst(3)) {
+                return (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == id
+            }
+            return screen.localizedName.localizedCaseInsensitiveCompare(selector) == .orderedSame
+        }) else { return self }
+
+        var resolved = self
+        if let value = override.width { resolved.width = value }
+        if let value = override.height { resolved.height = value }
+        if let value = override.offsetX { resolved.offsetX = value }
+        if let value = override.offsetY { resolved.offsetY = value }
+        if let value = override.offsetTop { resolved.offsetTop = value }
+        if let value = override.offsetSide { resolved.offsetSide = max(0, value) }
+        if let value = override.floating { resolved.floating = value }
+        if let value = override.radiusTopLeft { resolved.radiusTopLeft = max(0, value) }
+        if let value = override.radiusTopRight { resolved.radiusTopRight = max(0, value) }
+        if let value = override.radiusBottomRight { resolved.radiusBottomRight = max(0, value) }
+        if let value = override.radiusBottomLeft { resolved.radiusBottomLeft = max(0, value) }
+        if let value = override.padding { resolved.padding = value }
+        if let value = override.moduleMargin { resolved.moduleMargin = value }
+        if let value = override.left { resolved.left = value }
+        if let value = override.center { resolved.center = value }
+        if let value = override.right { resolved.right = value }
+        return resolved
+    }
 
     static func load() -> BarConfig {
         let home = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/config.toml")
@@ -45,20 +99,10 @@ struct BarConfig {
         let configPath = FileManager.default.fileExists(atPath: path) ? path : legacyPath
         guard let source = try? String(contentsOfFile: configPath, encoding: .utf8) else { return BarConfig() }
         var result = BarConfig()
+        var monitorConfigs: [String: MonitorConfig] = [:]
         var section = ""
         for raw in source.components(separatedBy: .newlines) {
-            var quote: Character?
-            var uncommented = ""
-            for character in raw {
-                if let currentQuote = quote {
-                    if character == currentQuote { quote = nil }
-                } else if character == "\"" || character == "'" {
-                    quote = character
-                } else if character == "#" {
-                    break
-                }
-                uncommented.append(character)
-            }
+            let uncommented = stripComment(from: raw)
             let line = uncommented.trimmingCharacters(in: .whitespaces)
             if line.isEmpty { continue }
             if line.hasPrefix("[") && line.hasSuffix("]") { section = String(line.dropFirst().dropLast()); continue }
@@ -70,6 +114,32 @@ struct BarConfig {
             func string() -> String { value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'")) }
             func strings() -> [String] {
                 value.trimmingCharacters(in: CharacterSet(charactersIn: "[]")).split(separator: ",").map { $0.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: "\"'"))) }.filter { !$0.isEmpty }
+            }
+            if section.hasPrefix("monitors.") {
+                let profileName = String(section.dropFirst("monitors.".count))
+                var profile = monitorConfigs[profileName] ?? MonitorConfig()
+                switch key {
+                case "screen": profile.screen = string()
+                case "width": profile.width = string()
+                case "height": profile.height = number(0)
+                case "offset_x": profile.offsetX = number(0)
+                case "offset_y": profile.offsetY = number(0)
+                case "offset_top": profile.offsetTop = number(0)
+                case "offset_side": profile.offsetSide = number(0)
+                case "float": profile.floating = value.lowercased() == "true"
+                case "radius_top_left": profile.radiusTopLeft = number(0)
+                case "radius_top_right": profile.radiusTopRight = number(0)
+                case "radius_bottom_right": profile.radiusBottomRight = number(0)
+                case "radius_bottom_left": profile.radiusBottomLeft = number(0)
+                case "padding": profile.padding = number(0)
+                case "module_margin": profile.moduleMargin = number(0)
+                case "modules-left": profile.left = strings()
+                case "modules-center": profile.center = strings()
+                case "modules-right": profile.right = strings()
+                default: break
+                }
+                monitorConfigs[profileName] = profile
+                continue
             }
             switch "\(section).\(key)" {
             case "bar.monitor": result.monitor = string()
@@ -108,9 +178,36 @@ struct BarConfig {
             case "weather.longitude": result.weatherLongitude = Double(value)
             case "weather.refresh_minutes":
                 if let minutes = Double(value), minutes >= 1 { result.weatherRefreshMinutes = minutes }
-            case ".wifi_ssid_masked": result.wifiSSIDMasked = value.lowercased() == "true"
-            case ".masked_ssid_name": result.maskedSSIDName = string().isEmpty ? "<redacted>" : string()
+            case "wifi.wifi_ssid_masked": result.wifiSSIDMasked = value.lowercased() == "true"
+            case "wifi.masked_ssid_name": result.maskedSSIDName = string().isEmpty ? "<redacted>" : string()
             default: break
+            }
+        }
+        result.monitorConfigs = monitorConfigs.keys.sorted().compactMap { monitorConfigs[$0] }
+        return result
+    }
+
+    private static func stripComment(from line: String) -> String {
+        var quote: Character?
+        var escaped = false
+        var result = ""
+        for character in line {
+            if let currentQuote = quote {
+                if currentQuote == "\"" && escaped {
+                    escaped = false
+                } else if currentQuote == "\"" && character == "\\" {
+                    escaped = true
+                } else if character == currentQuote {
+                    quote = nil
+                }
+                result.append(character)
+            } else if character == "\"" || character == "'" {
+                quote = character
+                result.append(character)
+            } else if character == "#" {
+                break
+            } else {
+                result.append(character)
             }
         }
         return result

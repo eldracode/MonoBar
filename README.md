@@ -18,7 +18,29 @@ Set `float = true` to keep the bar above normal app windows, or `false` to let w
 
 `offset_side` sets an equal inset from the left and right edges in points. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
 
-Set the top-level `wifi_ssid_masked = true` to hide the connected Wi-Fi network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+
+MonoBar creates a bar on every connected display. The `[bar]` and `[layout]` sections set defaults; add a `[monitors.<profile>]` section to override geometry or modules for one display. `screen` matches a display's macOS name, `main`, or `id:<display-id>`. Unspecified properties inherit the defaults.
+
+```toml
+[monitors.laptop]
+screen = "main"
+height = 32
+offset_top = 2
+modules-left = ["workspaces", "title"]
+modules-right = ["wifi", "battery", "clock"]
+
+[monitors.external]
+screen = "DELL U2723QE"
+height = 40
+offset_side = 12
+modules-left = ["workspaces"]
+modules-right = ["cpu", "ram", "clock"]
+```
+
+Display changes rebuild the bars using the matching monitor profile.
+
+Config files support TOML `#` comments on their own lines or after a setting. A `#` inside a quoted string is kept as part of the value.
 
 ### For debug builds
 ```sh

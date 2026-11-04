@@ -14,6 +14,7 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
     private var fullscreenTimer: Timer?
     private var weatherLocationTimer: Timer?
     private var spaceObserver: NSObjectProtocol?
+    private var screenObserver: NSObjectProtocol?
     private weak var menuBarScreen: NSScreen?
     private var didStart = false
 
@@ -28,7 +29,14 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
             requestWeatherLocationIfNeeded()
         }
         model.start()
-        panels = NSScreen.screens.map { BarPanel(screen: $0, config: config, model: model) }
+        rebuildPanelsForConnectedScreens()
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.rebuildPanelsForConnectedScreens() }
+        }
         spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil,
@@ -66,6 +74,7 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
         if let localMouseMonitor { NSEvent.removeMonitor(localMouseMonitor) }
         if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
         if let spaceObserver { NSWorkspace.shared.notificationCenter.removeObserver(spaceObserver) }
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         fullscreenTimer?.invalidate()
         weatherLocationTimer?.invalidate()
     }
@@ -138,6 +147,15 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
             panel.setHiddenForFullscreen(isFullscreen)
             if forceShow && !isFullscreen { panel.showInCurrentSpace() }
         }
+    }
+
+    private func rebuildPanelsForConnectedScreens() {
+        panels.forEach { $0.close() }
+        panels = NSScreen.screens.map { screen in
+            BarPanel(screen: screen, config: config.config(for: screen), model: model)
+        }
+        menuBarScreen = nil
+        updateFullscreenVisibility(forceShow: true)
     }
 
     private func updateMenuBarLevel(at point: NSPoint) {

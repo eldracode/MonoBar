@@ -1,3 +1,8 @@
+[wifi]
+wifi_ssid_masked = false # Hide the connected network name when enabled.
+masked_ssid_name = "<redacted>"
+
+# Shared bar defaults apply to every display without a monitor profile.
 [bar]
 monitor = "main"
 width = "100%"
@@ -13,9 +18,6 @@ radius_bottom_left = 0
 padding = 16
 module_margin = 12
 socket = "~/.config/monobar/events.sock"
-
-wifi_ssid_masked = false
-masked_ssid_name = "<redacted>"
 
 [colors]
 background = "171A21E8"
