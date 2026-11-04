@@ -288,7 +288,9 @@ final class BarModel {
         return "—"
     }
     private func wifiValues() -> [ModuleValue] {
-        let state = wifiText()
+        let rawState = wifiText()
+        let isConnectedSSID = rawState != "Off" && rawState != "—"
+        let state = config.wifiSSIDMasked && isConnectedSSID ? config.maskedSSIDName : rawState
         let action = "toggle:wifi"
         let symbol = state == "Off" ? "wifi.slash" : "wifi"
         return [

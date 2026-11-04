@@ -14,6 +14,9 @@ padding = 16
 module_margin = 12
 socket = "~/.config/monobar/events.sock"
 
+wifi_ssid_masked = false
+masked_ssid_name = "<redacted>"
+
 [colors]
 background = "171A21E8"
 foreground = "E7EAF0"

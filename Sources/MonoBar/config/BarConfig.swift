@@ -33,6 +33,8 @@ struct BarConfig {
     var weatherLatitude: Double?
     var weatherLongitude: Double?
     var weatherRefreshMinutes: Double = 15
+    var wifiSSIDMasked = false
+    var maskedSSIDName = "<redacted>"
 
     static func load() -> BarConfig {
         let home = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/config.toml")
@@ -106,6 +108,8 @@ struct BarConfig {
             case "weather.longitude": result.weatherLongitude = Double(value)
             case "weather.refresh_minutes":
                 if let minutes = Double(value), minutes >= 1 { result.weatherRefreshMinutes = minutes }
+            case ".wifi_ssid_masked": result.wifiSSIDMasked = value.lowercased() == "true"
+            case ".masked_ssid_name": result.maskedSSIDName = string().isEmpty ? "<redacted>" : string()
             default: break
             }
         }

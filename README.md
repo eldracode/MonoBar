@@ -18,6 +18,8 @@ Set `float = true` to keep the bar above normal app windows, or `false` to let w
 
 `offset_side` sets an equal inset from the left and right edges in points. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
 
+Set the top-level `wifi_ssid_masked = true` to hide the connected Wi-Fi network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+
 ### For debug builds
 ```sh
 make build
