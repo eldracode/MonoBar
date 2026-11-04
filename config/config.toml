@@ -19,6 +19,21 @@ padding = 16
 module_margin = 12
 socket = "~/.config/monobar/events.sock"
 
+# Bars inherit the existing [bar] and [layout] settings, and profiles can override modules,
+# width, height, offsets, corner radii, floating, padding, and module spacing.
+
+#[monitors.laptop]
+#screen = "main"
+#height = 32
+#offset_top = 2
+#modules-right = ["wifi", "battery", "clock"]
+
+#[monitors.external]
+#screen = "DELL U2723QE"
+#height = 40
+#offset_side = 12
+#modules-right = ["cpu", "ram", "clock"]
+
 [colors]
 background = "171A21E8"
 foreground = "E7EAF0"
