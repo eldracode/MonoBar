@@ -7,7 +7,6 @@ struct ModuleValue {
     var muted = false
     var spacingAfter: CGFloat? = nil
     var symbolName: String? = nil
-    var symbolVariableValue: Double? = nil
     var scrollAction: String? = nil
 }
 

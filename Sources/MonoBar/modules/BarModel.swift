@@ -270,11 +270,20 @@ final class BarModel {
         let charging = description[kIOPSIsChargingKey] as? Bool ?? false
         let onACPower = (description[kIOPSPowerSourceStateKey] as? String) == "AC Power"
         let level = min(100, max(0, current))
-        let symbol = charging || onACPower ? "battery.100percent.bolt" : "battery.100percent"
-        return [
-            ModuleValue(text: "", spacingAfter: 3, symbolName: symbol, symbolVariableValue: Double(level) / 100),
-            ModuleValue(text: "\(level)%")
-        ]
+        let symbol: String
+        switch level {
+        case ..<13: symbol = "battery.0percent"
+        case ..<38: symbol = "battery.25percent"
+        case ..<63: symbol = "battery.50percent"
+        case ..<88: symbol = "battery.75percent"
+        default: symbol = "battery.100percent"
+        }
+        var values = [ModuleValue(text: "", spacingAfter: 3, symbolName: symbol)]
+        if charging || onACPower {
+            values.append(ModuleValue(text: "", accent: true, spacingAfter: 3, symbolName: "bolt.fill"))
+        }
+        values.append(ModuleValue(text: "\(level)%"))
+        return values
     }
     private func wifiText() -> String {
         guard let interface = wifiClient.interface() else { return "—" }

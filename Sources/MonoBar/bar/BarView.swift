@@ -125,12 +125,7 @@ final class BarView: NSView {
     private func symbolImage(for item: ModuleValue) -> NSImage? {
         guard let symbolName = item.symbolName else { return nil }
         let resolvedName = symbolName == "fontawesome-bluetooth" ? "antenna.radiowaves.left.and.right" : symbolName
-        let image: NSImage?
-        if let variableValue = item.symbolVariableValue {
-            image = NSImage(systemSymbolName: resolvedName, variableValue: variableValue, accessibilityDescription: nil)
-        } else {
-            image = NSImage(systemSymbolName: resolvedName, accessibilityDescription: nil)
-        }
+        let image = NSImage(systemSymbolName: resolvedName, accessibilityDescription: nil)
         return image?.withSymbolConfiguration(
             NSImage.SymbolConfiguration(pointSize: config.fontSize, weight: .medium)
                 .applying(NSImage.SymbolConfiguration(paletteColors: [color(for: item)]))
