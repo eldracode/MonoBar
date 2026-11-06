@@ -14,6 +14,10 @@ struct MonitorConfig {
     var radiusTopRight: CGFloat?
     var radiusBottomRight: CGFloat?
     var radiusBottomLeft: CGFloat?
+    var radiusTopLeftNotch: CGFloat?
+    var radiusTopRightNotch: CGFloat?
+    var radiusBottomRightNotch: CGFloat?
+    var radiusBottomLeftNotch: CGFloat?
     var padding: CGFloat?
     var moduleMargin: CGFloat?
     var left: [String]?
@@ -34,6 +38,10 @@ struct BarConfig {
     var radiusTopRight: CGFloat = 0
     var radiusBottomRight: CGFloat = 0
     var radiusBottomLeft: CGFloat = 0
+    var radiusTopLeftNotch: CGFloat?
+    var radiusTopRightNotch: CGFloat?
+    var radiusBottomRightNotch: CGFloat?
+    var radiusBottomLeftNotch: CGFloat?
     var padding: CGFloat = 14
     var moduleMargin: CGFloat = 10
     var background = NSColor(hex: "171A21E8")
@@ -82,6 +90,10 @@ struct BarConfig {
         if let value = override.radiusTopRight { resolved.radiusTopRight = max(0, value) }
         if let value = override.radiusBottomRight { resolved.radiusBottomRight = max(0, value) }
         if let value = override.radiusBottomLeft { resolved.radiusBottomLeft = max(0, value) }
+        if let value = override.radiusTopLeftNotch { resolved.radiusTopLeftNotch = max(0, value) }
+        if let value = override.radiusTopRightNotch { resolved.radiusTopRightNotch = max(0, value) }
+        if let value = override.radiusBottomRightNotch { resolved.radiusBottomRightNotch = max(0, value) }
+        if let value = override.radiusBottomLeftNotch { resolved.radiusBottomLeftNotch = max(0, value) }
         if let value = override.padding { resolved.padding = value }
         if let value = override.moduleMargin { resolved.moduleMargin = value }
         if let value = override.left { resolved.left = value }
@@ -131,6 +143,10 @@ struct BarConfig {
                 case "radius_top_right": profile.radiusTopRight = number(0)
                 case "radius_bottom_right": profile.radiusBottomRight = number(0)
                 case "radius_bottom_left": profile.radiusBottomLeft = number(0)
+                case "radius_top_left_notch": profile.radiusTopLeftNotch = number(0)
+                case "radius_top_right_notch": profile.radiusTopRightNotch = number(0)
+                case "radius_bottom_right_notch": profile.radiusBottomRightNotch = number(0)
+                case "radius_bottom_left_notch": profile.radiusBottomLeftNotch = number(0)
                 case "padding": profile.padding = number(0)
                 case "module_margin": profile.moduleMargin = number(0)
                 case "modules-left": profile.left = strings()
@@ -154,6 +170,10 @@ struct BarConfig {
             case "bar.radius_top_right": result.radiusTopRight = max(0, number(result.radiusTopRight))
             case "bar.radius_bottom_right": result.radiusBottomRight = max(0, number(result.radiusBottomRight))
             case "bar.radius_bottom_left": result.radiusBottomLeft = max(0, number(result.radiusBottomLeft))
+            case "bar.radius_top_left_notch": result.radiusTopLeftNotch = max(0, number(0))
+            case "bar.radius_top_right_notch": result.radiusTopRightNotch = max(0, number(0))
+            case "bar.radius_bottom_right_notch": result.radiusBottomRightNotch = max(0, number(0))
+            case "bar.radius_bottom_left_notch": result.radiusBottomLeftNotch = max(0, number(0))
             case "bar.padding": result.padding = number(result.padding)
             case "bar.module_margin": result.moduleMargin = number(result.moduleMargin)
             case "bar.socket":

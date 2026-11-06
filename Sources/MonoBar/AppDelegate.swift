@@ -211,8 +211,8 @@ final class BarApplicationDelegate: NSObject, NSApplicationDelegate, @preconcurr
 
     private func rebuildPanelsForConnectedScreens() {
         panels.forEach { $0.close() }
-        panels = NSScreen.screens.map { screen in
-            BarPanel(screen: screen, config: config.config(for: screen), model: model)
+        panels = NSScreen.screens.enumerated().flatMap { index, screen in
+            BarPanel.panels(screen: screen, screenIndex: index + 1, config: config.config(for: screen), model: model)
         }
         menuBarScreen = nil
         updateFullscreenVisibility(forceShow: true)

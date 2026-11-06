@@ -9,11 +9,13 @@ final class BarView: NSView {
 
     private let config: BarConfig
     private let model: BarModel
+    private let segment: BarViewSegment
+    private let screenIndex: Int
     private var hitTargets: [(NSRect, String)] = []
     private var scrollTargets: [(NSRect, String)] = []
 
-    init(frame: NSRect, config: BarConfig, model: BarModel) {
-        self.config = config; self.model = model
+    init(frame: NSRect, config: BarConfig, model: BarModel, screenIndex: Int, segment: BarViewSegment = .full) {
+        self.config = config; self.model = model; self.screenIndex = screenIndex; self.segment = segment
         super.init(frame: frame)
         wantsLayer = true
         model.observe { [weak self] in self?.needsDisplay = true }
@@ -24,8 +26,10 @@ final class BarView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         config.background.setFill(); barBackgroundPath().fill()
         config.border.withAlphaComponent(0.65).setStroke()
-        let bottomLeft = min(config.radiusBottomLeft, min(bounds.width, bounds.height) / 2)
-        let bottomRight = min(config.radiusBottomRight, min(bounds.width, bounds.height) / 2)
+        let radii = cornerRadii()
+        let limit = min(bounds.width, bounds.height) / 2
+        let bottomLeft = min(radii.bottomLeft, limit)
+        let bottomRight = min(radii.bottomRight, limit)
         let edge = NSBezierPath()
         edge.move(to: NSPoint(x: bottomLeft, y: 0.5))
         edge.line(to: NSPoint(x: bounds.width - bottomRight, y: 0.5))
@@ -33,23 +37,33 @@ final class BarView: NSView {
         edge.stroke()
         hitTargets.removeAll(keepingCapacity: true)
         scrollTargets.removeAll(keepingCapacity: true)
-        let left = model.values(for: config.left)
-        let center = model.values(for: config.center)
-        let right = model.values(for: config.right)
-        let leftWidth = draw(left, startingAt: config.padding, align: .left)
-        let rightWidth = draw(right, startingAt: bounds.width - config.padding, align: .right)
-        _ = draw(center, startingAt: bounds.midX, align: .center)
-        _ = leftWidth; _ = rightWidth
+        switch segment {
+        case .full:
+            let leftWidth = draw(values(for: config.left), startingAt: config.padding, align: .left)
+            let rightWidth = draw(values(for: config.right), startingAt: bounds.width - config.padding, align: .right)
+            _ = draw(values(for: config.center), startingAt: bounds.midX, align: .center)
+            _ = leftWidth; _ = rightWidth
+        case .leftOfNotch:
+            _ = draw(values(for: config.left), startingAt: config.padding, align: .left)
+            _ = draw(values(for: config.center), startingAt: bounds.width - config.padding, align: .right)
+        case .rightOfNotch:
+            _ = draw(values(for: config.right), startingAt: bounds.width - config.padding, align: .right)
+        }
+    }
+
+    private func values(for modules: [String]) -> [ModuleValue] {
+        model.values(for: modules, screenIndex: screenIndex)
     }
 
     private func barBackgroundPath() -> NSBezierPath {
         let width = bounds.width
         let height = bounds.height
         let limit = min(width, height) / 2
-        let topLeft = min(config.radiusTopLeft, limit)
-        let topRight = min(config.radiusTopRight, limit)
-        let bottomRight = min(config.radiusBottomRight, limit)
-        let bottomLeft = min(config.radiusBottomLeft, limit)
+        let radii = cornerRadii()
+        let topLeft = min(radii.topLeft, limit)
+        let topRight = min(radii.topRight, limit)
+        let bottomRight = min(radii.bottomRight, limit)
+        let bottomLeft = min(radii.bottomLeft, limit)
         let curve: CGFloat = 0.55228475
         let path = NSBezierPath()
 
@@ -80,6 +94,27 @@ final class BarView: NSView {
         )
         path.close()
         return path
+    }
+
+    private func cornerRadii() -> (topLeft: CGFloat, topRight: CGFloat, bottomRight: CGFloat, bottomLeft: CGFloat) {
+        switch segment {
+        case .full:
+            return (config.radiusTopLeft, config.radiusTopRight, config.radiusBottomRight, config.radiusBottomLeft)
+        case .leftOfNotch:
+            return (
+                config.radiusTopLeft,
+                config.radiusTopRightNotch ?? config.radiusTopRight,
+                config.radiusBottomRightNotch ?? config.radiusBottomRight,
+                config.radiusBottomLeft
+            )
+        case .rightOfNotch:
+            return (
+                config.radiusTopLeftNotch ?? config.radiusTopLeft,
+                config.radiusTopRight,
+                config.radiusBottomRight,
+                config.radiusBottomLeftNotch ?? config.radiusBottomLeft
+            )
+        }
     }
 
     private func draw(_ items: [ModuleValue], startingAt x: CGFloat, align: NSTextAlignment) -> CGFloat {

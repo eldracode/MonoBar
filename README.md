@@ -14,9 +14,11 @@ The `volume` and `mic` modules show the current output and input volume. Click e
 
 Set `radius_top_left`, `radius_top_right`, `radius_bottom_right`, and `radius_bottom_left` in `[bar]` to configure each corner independently. Values are point radii and are clamped to half the bar's height or width.
 
+For the four corners facing the notch, set `radius_top_left_notch`, `radius_top_right_notch`, `radius_bottom_right_notch`, and `radius_bottom_left_notch`. Each defaults to the corresponding regular corner radius and can also be overridden in a `[monitors.<profile>]` section.
+
 Set `float = true` to keep the bar above normal app windows, or `false` to let windows cover it. `offset_top` moves the bar down from the top edge in points; the existing `offset_y` setting remains supported, and `offset_top` takes precedence when both are set.
 
-`offset_side` sets an equal inset from the left and right edges in points. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
+`offset_side` sets an equal inset from the left and right screen edges and from both notch edges on notched displays. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
 
 Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
 
@@ -67,6 +69,6 @@ Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the exampl
 
 ## AeroSpace events
 
-See `aerospace.toml.example`; merge the hook into your AeroSpace config and reload AeroSpace. Workspace pills invoke `aerospace workspace <name>`. The bar refreshes workspaces on hook events and reads the focused window title during refresh.
+See `aerospace.toml.example`; merge the hook into your AeroSpace config and reload AeroSpace. Workspace pills invoke `aerospace workspace <name>`. Each display filters workspace pills to the workspaces AeroSpace assigns to that monitor. The bar refreshes workspaces on hook events and reads the focused window title during refresh.
 
 The implementation is intentionally compact. `music` remains an extension point. Wi-Fi, Bluetooth, audio volume, and weather use native system APIs or the configured OpenWeather provider; CPU/RAM and battery use native system APIs.

@@ -55,10 +55,10 @@ final class BarModel {
         weatherRequest = nil
     }
 
-    func values(for names: [String]) -> [ModuleValue] {
+    func values(for names: [String], screenIndex: Int? = nil) -> [ModuleValue] {
         names.flatMap { name -> [ModuleValue] in
             switch name {
-            case "workspaces": return aerospace.workspaces.map { ws in
+            case "workspaces": return aerospace.workspaces.filter { screenIndex == nil || $0.screenIndex == screenIndex }.map { ws in
                 let state = ws.focused ? "●" : (ws.visible ? "◉" : (ws.occupied ? "•" : "○"))
                 return ModuleValue(text: "\(state) \(ws.id)", action: "workspace:\(ws.id)", accent: ws.focused || ws.visible)
             }
