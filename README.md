@@ -1,4 +1,8 @@
-# MonoBar
+<p align="center">
+  <img src="Assets/512-mac.png" alt="MonoBar logo" width="128">
+</p>
+
+<h1 align="center">MonoBar</h1>
 
 A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderless non-activating `NSPanel`, CoreGraphics text drawing, a small TOML configuration reader, and a Unix datagram socket for AeroSpace event callbacks.
 
