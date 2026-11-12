@@ -8,6 +8,7 @@ struct ModuleValue {
     var spacingAfter: CGFloat? = nil
     var symbolName: String? = nil
     var scrollAction: String? = nil
+    var warning = false
 }
 
 protocol Module {

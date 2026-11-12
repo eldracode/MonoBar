@@ -168,6 +168,7 @@ final class BarView: NSView {
     }
 
     private func color(for item: ModuleValue) -> NSColor {
+        if item.warning { return .systemRed }
         if item.accent { return config.accent }
         return item.muted ? config.foreground.withAlphaComponent(0.5) : config.foreground
     }
