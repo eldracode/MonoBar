@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Assets/512-mac.png" alt="MonoBar logo" width="128">
+  <img src="Assets/1024-mac.png" alt="MonoBar logo" width="256">
 </p>
 
 <h1 align="center">MonoBar</h1>
