@@ -19,7 +19,11 @@ Requires macOS 13+ and Swift 6.
 
 #### wifi: Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
 
-#### vpn: The `vpn` module controls OpenVPN Connect. Set `[vpn].profile_id` to the imported profile ID and include `"vpn"` in `[layout].modules-right` if your existing config defines a custom module list. Get profile IDs with OpenVPN Connect's [`--list-profiles` command](https://openvpn.net/connect-docs/command-line-functionality-macos/). Clicking the module connects or disconnects the configured profile and shows its connection state. After editing the config, press **Control+Shift+R** to reload it.
+#### vpn: The `vpn` module controls OpenVPN Connect. Set `[vpn].profile_id` to the imported profile ID and include `"vpn"` in `[layout].modules-right` if your existing config defines a custom module list. Get profile IDs with OpenVPN Connect's CLI command:
+```sh
+'/Applications/OpenVPN Connect/OpenVPN Connect.app/contents/MacOS/OpenVPN Connect' --list-profiles
+```
+Clicking the module connects or disconnects the configured profile and shows its connection state. After editing the config, press **Control+Shift+R** to reload it.
 
 For seamless VPN module operation, configure OpenVPN Connect to minimize on launch:
 
