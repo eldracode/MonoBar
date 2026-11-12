@@ -2,6 +2,9 @@
 wifi_ssid_masked = false # Hide the connected network name when enabled.
 masked_ssid_name = "<redacted>"
 
+[vpn]
+profile_id = ""
+
 # Shared bar defaults apply to every display without a monitor profile.
 [bar]
 monitor = "main"
@@ -48,7 +51,7 @@ size = 13
 [layout]
 modules-left = ["workspaces", "title"]
 modules-center = ["music"]
-modules-right = ["cpu", "ram", "battery", "volume", "mic", "wifi", "bluetooth", "weather", "clock"]
+modules-right = ["cpu", "ram", "battery", "volume", "mic", "vpn", "wifi", "bluetooth", "weather", "clock"]
 
 [weather]
 provider = "openweather"

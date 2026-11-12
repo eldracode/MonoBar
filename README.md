@@ -10,12 +10,24 @@ A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderle
 
 Requires macOS 13+ and Swift 6.
 
-Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
+### Modules: 
+#### bluetooth: Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
 
-Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
+#### weather: Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
 
-The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
+#### volume/mic: The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
 
+#### wifi: Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+
+#### vpn: The `vpn` module controls OpenVPN Connect. Set `[vpn].profile_id` to the imported profile ID and include `"vpn"` in `[layout].modules-right` if your existing config defines a custom module list. Get profile IDs with OpenVPN Connect's [`--list-profiles` command](https://openvpn.net/connect-docs/command-line-functionality-macos/). Clicking the module connects or disconnects the configured profile and shows its connection state. After editing the config, press **Control+Shift+R** to reload it.
+
+For seamless VPN module operation, configure OpenVPN Connect to minimize on launch:
+
+```sh
+'/Applications/OpenVPN Connect/OpenVPN Connect.app/contents/MacOS/OpenVPN Connect' --set-setting=minimize-on-launch --value=true
+```
+
+### Bar floating and radius config
 Set `radius_top_left`, `radius_top_right`, `radius_bottom_right`, and `radius_bottom_left` in `[bar]` to configure each corner independently. Values are point radii and are clamped to half the bar's height or width.
 
 For the four corners facing the notch, set `radius_top_left_notch`, `radius_top_right_notch`, `radius_bottom_right_notch`, and `radius_bottom_left_notch`. Each defaults to the corresponding regular corner radius and can also be overridden in a `[monitors.<profile>]` section.
@@ -24,7 +36,7 @@ Set `float = true` to keep the bar above normal app windows, or `false` to let w
 
 `offset_side` sets an equal inset from the left and right screen edges and from both notch edges on notched displays. With `width = "100%"`, the bar fills the remaining width and stays centered. The existing `offset_x` remains available as an additional horizontal shift.
 
-Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+### Multi-monitor setup
 
 MonoBar creates a bar on every connected display. The `[bar]` and `[layout]` sections set defaults; add a `[monitors.<profile>]` section to override geometry or modules for one display. `screen` matches a display's macOS name, `main`, or `id:<display-id>`. Unspecified properties inherit the defaults.
 

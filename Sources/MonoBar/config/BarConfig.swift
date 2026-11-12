@@ -53,7 +53,7 @@ struct BarConfig {
     var fontSize: CGFloat = 13
     var left = ["workspaces", "title"]
     var center = ["music"]
-    var right = ["cpu", "ram", "battery", "volume", "mic", "wifi", "bluetooth", "weather", "clock"]
+    var right = ["cpu", "ram", "battery", "volume", "mic", "vpn", "wifi", "bluetooth", "weather", "clock"]
     var socketPath = (NSHomeDirectory() as NSString).appendingPathComponent(".config/monobar/events.sock")
     var weatherProvider = "openweather"
     var weatherAPIKey = ""
@@ -63,6 +63,7 @@ struct BarConfig {
     var weatherRefreshMinutes: Double = 15
     var wifiSSIDMasked = false
     var maskedSSIDName = "<redacted>"
+    var vpnProfileID = ""
     var monitorConfigs: [MonitorConfig] = []
 
     func config(for screen: NSScreen) -> BarConfig {
@@ -200,6 +201,7 @@ struct BarConfig {
                 if let minutes = Double(value), minutes >= 1 { result.weatherRefreshMinutes = minutes }
             case "wifi.wifi_ssid_masked": result.wifiSSIDMasked = value.lowercased() == "true"
             case "wifi.masked_ssid_name": result.maskedSSIDName = string().isEmpty ? "<redacted>" : string()
+            case "vpn.profile_id": result.vpnProfileID = string()
             default: break
             }
         }
