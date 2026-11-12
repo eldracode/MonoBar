@@ -11,15 +11,20 @@ A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderle
 Requires macOS 13+ and Swift 6.
 
 ### Modules: 
-#### bluetooth: Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
+#### bluetooth: 
+Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
 
-#### weather: Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
+#### weather: 
+Weather uses the OpenWeather current weather API. Add your API key under `[weather]` in `~/.config/monobar/config.toml`. MonoBar uses current location when latitude and longitude are omitted, or you can set both coordinates to avoid location lookup. Choose `metric`, `imperial`, or `standard` units.
 
-#### volume/mic: The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
+#### volume/mic: 
+The `volume` and `mic` modules show the current output and input volume. Click either module to toggle mute, or scroll up and down over it to adjust that device's level.
 
-#### wifi: Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
+#### wifi: 
+Under `[wifi]`, set `wifi_ssid_masked = true` to hide the connected network name. Set `masked_ssid_name` to choose the replacement text; it defaults to `"<redacted>"` when omitted or empty.
 
-#### vpn: The `vpn` module controls OpenVPN Connect. Set `[vpn].profile_id` to the imported profile ID and include `"vpn"` in `[layout].modules-right` if your existing config defines a custom module list. Get profile IDs with OpenVPN Connect's CLI command:
+#### vpn: 
+The `vpn` module controls OpenVPN Connect. Set `[vpn].profile_id` to the imported profile ID and include `"vpn"` in `[layout].modules-right` if your existing config defines a custom module list. Get profile IDs with OpenVPN Connect's CLI command:
 ```sh
 '/Applications/OpenVPN Connect/OpenVPN Connect.app/contents/MacOS/OpenVPN Connect' --list-profiles
 ```
