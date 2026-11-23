@@ -46,7 +46,7 @@ accent = "8AB4F8"
 [fonts]
 primary = "SF Pro Text"
 fallback = "Apple Symbols"
-size = 13
+size = 13 # Global font size in points for all bar modules and icons.
 
 [layout]
 modules-left = ["workspaces", "title"]
