@@ -10,6 +10,17 @@ A native AppKit status bar for macOS, designed for AeroSpace. It uses a borderle
 
 Requires macOS 13+ and Swift 6.
 
+### Global font size
+
+Set `size` under `[fonts]` to change the font size across all modules and icons on every display. The default is 13 points; monitor profiles inherit this global value.
+
+```toml
+[fonts]
+primary = "SF Pro Text"
+fallback = "Apple Symbols"
+size = 13
+```
+
 ### Modules: 
 #### bluetooth: 
 Bluetooth toggling uses [`blueutil`](https://github.com/toy/blueutil); install it with `brew install blueutil`.
@@ -91,6 +102,8 @@ Copy `config/config.toml` to `~/.config/monobar/config.toml`, replace the exampl
 ## Preview
 
   ![Default theme](./Assets/default_theme.png)
+
+  config for this particular setup can be found at [Example config](./config/example_config.toml)
 
 ## AeroSpace events
 
