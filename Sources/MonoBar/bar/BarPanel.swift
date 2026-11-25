@@ -62,7 +62,14 @@ final class BarPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         hidesOnDeactivate = false
         isMovable = false
-        contentView = BarView(frame: NSRect(origin: .zero, size: frame.size), config: config, model: model, screenIndex: screenIndex, segment: segment)
+        contentView = BarView(
+            frame: NSRect(origin: .zero, size: frame.size),
+            config: config,
+            model: model,
+            screenIndex: screenIndex,
+            monitorName: screen.localizedName,
+            segment: segment
+        )
         orderFrontRegardless()
     }
 

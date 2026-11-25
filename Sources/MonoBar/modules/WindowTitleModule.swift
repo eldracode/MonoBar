@@ -2,11 +2,12 @@ import Foundation
 
 @MainActor
 extension BarModel {
-    func windowTitleValues() -> [ModuleValue] {
-        guard !aerospace.windows.isEmpty else { return [] }
+    func windowTitleValues(screenIndex: Int?) -> [ModuleValue] {
+        let windows = aerospace.windows(forScreen: screenIndex)
+        guard !windows.isEmpty else { return [] }
         var groups: [(appName: String, windows: [WindowItem])] = []
         var groupIndices: [String: Int] = [:]
-        for window in aerospace.windows {
+        for window in windows {
             if let index = groupIndices[window.appName] {
                 groups[index].windows.append(window)
             } else {

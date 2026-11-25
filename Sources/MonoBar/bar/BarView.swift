@@ -11,11 +11,12 @@ final class BarView: NSView {
     private let model: BarModel
     private let segment: BarViewSegment
     private let screenIndex: Int
+    private let monitorName: String
     private var hitTargets: [(NSRect, String)] = []
     private var scrollTargets: [(NSRect, String)] = []
 
-    init(frame: NSRect, config: BarConfig, model: BarModel, screenIndex: Int, segment: BarViewSegment = .full) {
-        self.config = config; self.model = model; self.screenIndex = screenIndex; self.segment = segment
+    init(frame: NSRect, config: BarConfig, model: BarModel, screenIndex: Int, monitorName: String, segment: BarViewSegment = .full) {
+        self.config = config; self.model = model; self.screenIndex = screenIndex; self.monitorName = monitorName; self.segment = segment
         super.init(frame: frame)
         wantsLayer = true
         model.observe { [weak self] in self?.needsDisplay = true }
@@ -52,7 +53,7 @@ final class BarView: NSView {
     }
 
     private func values(for modules: [String]) -> [ModuleValue] {
-        model.values(for: modules, screenIndex: screenIndex)
+        model.values(for: modules, screenIndex: screenIndex, monitorName: monitorName)
     }
 
     private func barBackgroundPath() -> NSBezierPath {

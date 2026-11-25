@@ -58,11 +58,11 @@ final class BarModel {
         weatherRequest = nil
     }
 
-    func values(for names: [String], screenIndex: Int? = nil) -> [ModuleValue] {
+    func values(for names: [String], screenIndex: Int? = nil, monitorName: String? = nil) -> [ModuleValue] {
         names.flatMap { name -> [ModuleValue] in
             switch name {
-            case "workspaces": return workspaceValues(screenIndex: screenIndex)
-            case "title": return windowTitleValues()
+            case "workspaces": return workspaceValues(screenIndex: screenIndex, monitorName: monitorName)
+            case "title": return windowTitleValues(screenIndex: screenIndex)
             case "clock": return clockValues()
             case "battery": return batteryValues()
             case "cpu": return cpuValues()
@@ -97,6 +97,7 @@ final class BarModel {
     }
 
     func tick() {
+        aerospace.refresh(notify: false)
         lastCPU = cpuUsage()
         refreshAudioState()
         refreshWeather()
